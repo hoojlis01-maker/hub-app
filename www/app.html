@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1020">
-<meta name="ui-version" content="5">
+<meta name="ui-version" content="6">
 <title>Trung tâm điều khiển thông minh</title>
 <style>
   :root {
@@ -565,7 +565,9 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
   const readValue = (dv) => dec.decode(dv.buffer.slice(dv.byteOffset, dv.byteOffset + dv.byteLength));
 
   // "E" + muốn(4 hex) + thực(4 hex) + nối(0/1) + số kênh(2 số)
+  let lastE = '', lastS = '';
   function onEsp(text) {
+    if (text !== lastE) { lastE = text; dbg('hub E: ' + text); }
     const m = /^E([0-9A-Fa-f]{4})([0-9A-Fa-f]{4})([01])([0-9]{2})([0-9A-Fa-f]{2})?/.exec(text);
     if (!m) return;
     pump = m[5] ? parseInt(m[5], 16) : 255;
@@ -576,6 +578,7 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
 
   // "S01001001000,OK" -> chỉ lấy kết quả lệnh ở cuối
   function onStatus(text) {
+    if (text !== lastS) { lastS = text; dbg('hub S: ' + text); }
     const m = /^S([0-9]{8})([0-9]{3})?,?([A-Z]*)/.exec(text);
     if (!m) return;
     codes = m[1];
