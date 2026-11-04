@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1020">
-<meta name="ui-version" content="4">
+<meta name="ui-version" content="5">
 <title>Trung tâm điều khiển thông minh</title>
 <style>
   :root {
@@ -719,7 +719,7 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
       this.subs.push(await BLE.addListener('notification|' + this.id + '|' + SVC + '|' + u, (ev) => cb(hexTxt(ev.value))));
       await BLE.startNotifications({ deviceId: this.id, service: SVC, characteristic: u });
     },
-    async write(bytes) { await BLE.write({ deviceId: this.id, service: SVC, characteristic: CMD, value: hex(bytes) }); },
+    async write(bytes) { dbg('gửi ' + bytes.length + ' byte: ' + hex(bytes) + ' = "' + dec.decode(bytes).replace(/^\d+:/, '***:') + '"'); await BLE.write({ deviceId: this.id, service: SVC, characteristic: CMD, value: hex(bytes) }); dbg('gửi xong'); },
     close() { const id = this.id; BLE.disconnect({ deviceId: id }).catch(() => {}).then(() => onLost()); },
     forget() { this.id = ''; this.name = ''; store.set('bleId', ''); store.set('bleName', ''); },
   };
