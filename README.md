@@ -1,1 +1,868 @@
-# hub-app
+[app.html](https://github.com/user-attachments/files/34349576/app.html)
+# hub-app<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1020">
+<meta name="ui-version" content="2">
+<title>Trung tâm điều khiển thông minh</title>
+<style>
+  :root {
+    --bg: #0b1020; --card: #141b33; --card-hi: #1b2547; --line: #2a3566;
+    --text: #eef2ff; --muted: #8e9ac4;
+    --on: #3ddc84; --off: #6b7699; --warn: #ffb020; --err: #ff5d5d; --blue: #4aa8ff;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 520px; margin: 0 auto; padding: 16px; padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+  h1 { font-size: 20px; margin: 4px 0 2px; }
+  .sub { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+
+  .bar { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+  .pill { flex: 1; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px;
+    background: var(--card); border: 1px solid var(--line); font-size: 14px; min-width: 0; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--off); flex: none; }
+  .pill.ok .dot { background: var(--on); box-shadow: 0 0 8px var(--on); }
+  .pill.busy .dot { background: var(--warn); }
+  .pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  button { font: inherit; color: var(--text); cursor: pointer; border: 1px solid var(--line);
+    background: var(--card-hi); border-radius: 12px; padding: 10px 14px; touch-action: manipulation; }
+  button:active { transform: scale(.97); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary { background: var(--blue); border-color: var(--blue); color: #04101f; font-weight: 700; }
+  button.danger { border-color: var(--err); color: var(--err); background: transparent; }
+
+  .pin { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; font-size: 14px; color: var(--muted); }
+  .pin input { flex: 1; min-width: 0; font: inherit; color: var(--text); background: var(--card);
+    border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; letter-spacing: 3px; }
+
+  .link { display: flex; align-items: center; gap: 8px; padding: 10px 12px; margin-bottom: 12px;
+    border-radius: 12px; background: var(--card); border: 1px solid var(--line); font-size: 14px; }
+  .link.ok { border-color: var(--on); }
+  .link.wait { border-color: var(--warn); }
+  .link .cnt { margin-left: auto; font-weight: 800; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .card { text-align: left; padding: 12px; border-radius: 14px; background: var(--card);
+    border: 1.5px solid var(--line); display: flex; flex-direction: column; gap: 4px; min-height: 84px; cursor: pointer; user-select: none; }
+  .card .top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  .card .name { font-size: 13px; color: var(--muted); font-weight: 600; letter-spacing: .3px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card .ch { font-size: 11px; color: var(--muted); }
+  .card .state { font-size: 20px; font-weight: 800; }
+  .card.on { border-color: var(--on); background: #0f2a22; }
+  .card.on .state { color: var(--on); }
+  .card.off { border-color: #b8860b; }
+  .card.off .state { color: var(--warn); }
+  .card.wait { border-color: var(--warn); background: #2b2408; }
+  .card.wait .state { color: var(--warn); }
+  .card.disc { opacity: .5; cursor: not-allowed; }
+  .card.disc .state { color: var(--off); }
+  .card.err { border-color: var(--err); background: #3a1620; }
+  .card.err .state { color: var(--err); font-size: 16px; }
+  .card.auto { border-color: var(--blue); }
+  .card.auto .state { color: var(--blue); font-size: 17px; }
+  .card.hide { display: none; }
+  .card.pump { grid-column: 1 / -1; cursor: default; gap: 10px; }
+  .pump .probes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pump .pr { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px;
+    border-radius: 12px; background: #0e1530; border: 1.5px solid var(--line); }
+  .pump .pr b { display: block; font-size: 14px; }
+  .pump .pr small { color: var(--muted); font-size: 12px; }
+  .pump .pr svg { width: 28px; height: 34px; color: #697187; flex: none; }
+  .pump .pr.wet { border-color: var(--blue); }
+  .pump .pr.wet small { color: var(--blue); }
+  .pump .pr.wet svg { color: #3ca8ff; filter: drop-shadow(0 0 6px #3ca8ff99); }
+  .pump .pr.dry { border-color: var(--warn); }
+  .pump .modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .pump .modes button { padding: 10px 4px; font-weight: 700; font-size: 14px; background: #0e1530; color: #8a95b8; border-color: var(--line); }
+  .pump .modes button.act[data-m="A"] { background: var(--blue); border-color: var(--blue); color: #04101f; }
+  .pump .modes button.act[data-m="0"] { background: var(--warn); border-color: var(--warn); color: #1a1000; }
+  .pump .modes button.act[data-m="1"] { background: var(--on); border-color: var(--on); color: #03170c; }
+  .pump .sub2 { font-size: 13px; color: var(--muted); }
+  .pump .clr { display: none; }
+  .card.pump.err .clr { display: block; }
+  .card.edit { outline: 2px dashed var(--blue); outline-offset: -3px; }
+
+  .actions { display: flex; gap: 10px; margin-top: 12px; }
+  .actions button { flex: 1; }
+  #msg { margin-top: 12px; min-height: 22px; font-size: 14px; color: var(--warn); text-align: center; }
+  #warn { display: none; margin: 0 0 12px; padding: 12px; border-radius: 12px; background: #3a1620; border: 1px solid var(--err); font-size: 14px; }
+  .sec { font-size: 13px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .6px; margin: 16px 0 8px; }
+  .card.ro { cursor: default; }
+  .step { display: none; align-items: center; justify-content: space-between; gap: 6px; margin-top: 2px; }
+  .card.has-step .step { display: flex; }
+  .step button { width: 42px; height: 38px; padding: 0; font-size: 24px; line-height: 1; border-radius: 10px; touch-action: manipulation; }
+  .step .pct { font-weight: 800; font-size: 20px; }
+
+  /* ---- MÀN HÌNH CHÍNH CỦA HUB ---- */
+  .home { margin: 4px 0 14px; padding: 14px; border-radius: 18px; border: 1.5px solid var(--line);
+    background: linear-gradient(160deg, #101a3a 0%, #0c1430 60%, #0a1026 100%); box-shadow: 0 6px 24px #0006; }
+  .home.off { opacity: .55; }
+  .home .row1 { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
+  .home .clock { font-size: 52px; font-weight: 800; letter-spacing: 1px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .home .clock small { font-size: 22px; color: var(--muted); font-weight: 700; margin-left: 4px; }
+  .home .dt { text-align: right; font-size: 14px; line-height: 1.35; }
+  .home .dt b { display: block; font-size: 16px; }
+  .home .dt .lunar { color: #ffd746; font-weight: 600; }
+  .home .loc { margin-top: 6px; font-size: 13px; color: var(--muted); }
+  .home .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .home .tile { padding: 12px; border-radius: 14px; background: #0e1530; border: 1px solid var(--line); min-width: 0; }
+  .home .tile h3 { margin: 0 0 6px; font-size: 12px; color: var(--muted); letter-spacing: .6px; text-transform: uppercase; }
+  .home .big { font-size: 30px; font-weight: 800; line-height: 1.1; }
+  .home .big.t { color: #ffa032; }
+  .home .wx .big { font-size: 26px; }
+  .home .hum { color: #46c3ff; font-size: 18px; font-weight: 700; margin-top: 2px; }
+  .home .wx { display: flex; align-items: center; gap: 8px; }
+  .home .wx .ic { font-size: 34px; line-height: 1; }
+  .home .wxt { font-size: 13px; color: var(--text); margin-top: 4px; }
+  .home .wxs { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .home .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .home .chip { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; font-size: 13px;
+    background: #0e1530; border: 1px solid var(--line); }
+  .home .chip i { width: 9px; height: 9px; border-radius: 50%; background: var(--off); flex: none; }
+  .home .chip.g i { background: var(--on); box-shadow: 0 0 6px var(--on); }
+  .home .chip.y i { background: var(--warn); }
+  .home .chip.r i { background: var(--err); }
+  .home .bat { width: 34px; height: 14px; border: 2px solid #9aa6cf; border-radius: 3px; position: relative; flex: none; }
+  .home .bat::after { content: ""; position: absolute; right: -5px; top: 3px; width: 3px; height: 4px; background: #9aa6cf; border-radius: 1px; }
+  .home .bat b { position: absolute; left: 1px; top: 1px; bottom: 1px; width: 0; background: var(--on); border-radius: 1px; }
+  .home .bat.lo b { background: var(--err); }
+  .home .bat.mid b { background: var(--warn); }
+  /* ---- THANH TAB DƯỚI (kiểu app) ---- */
+  main { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
+  .tabpane { display: none; }
+  .tabpane.act { display: block; animation: fadein .18s ease; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: flex; justify-content: center;
+    background: #0d1330ee; backdrop-filter: blur(10px); border-top: 1px solid var(--line);
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); }
+  .tabs nav { display: flex; width: 100%; max-width: 520px; gap: 4px; }
+  .tabs button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px;
+    border: 0; background: transparent; color: var(--muted); font-size: 11px; font-weight: 600; border-radius: 12px; }
+  .tabs button .ti { font-size: 22px; line-height: 1.1; filter: grayscale(1) opacity(.7); }
+  .tabs button.act { color: var(--text); background: var(--card-hi); }
+  .tabs button.act .ti { filter: none; }
+  .tabs button .bd { position: absolute; margin: -2px 0 0 18px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px;
+    background: var(--err); color: #fff; font-size: 10px; line-height: 16px; display: none; }
+  .tabs button.has .bd { display: block; }
+  #repo { letter-spacing: 0; }
+  #dbg { display: none; position: fixed; left: 8px; right: 8px; bottom: calc(78px + env(safe-area-inset-bottom)); max-height: 30vh; overflow: auto;
+    z-index: 20; background: #000d; color: #9fffb0; font: 11px/1.35 ui-monospace, monospace; padding: 6px 8px; border-radius: 8px; white-space: pre-wrap; }
+  .sethead { margin: 4px 0 10px; font-size: 18px; font-weight: 800; }
+  .box { padding: 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); margin-bottom: 12px; }
+  .box h4 { margin: 0 0 6px; font-size: 14px; }
+  .box p { margin: 4px 0; font-size: 13px; color: var(--muted); }
+  .foot { margin-top: 18px; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<div id="dbg" onclick="this.style.display='none'"></div>
+<script>
+// Nhật ký lỗi hiện trên màn hình (bản thử nghiệm app). Chạm vào khung để ẩn.
+window.__dbg = function (t) {
+  try { var d = new Date(), e = document.getElementById('dbg');
+    e.textContent += ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2) + ' ' + t + '\n';
+    e.style.display = 'block'; e.scrollTop = e.scrollHeight; } catch (x) {}
+};
+window.addEventListener('error', function (e) { window.__dbg('LOI: ' + e.message + ' (dong ' + (e.lineno || '?') + ')'); });
+window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI hua: ' + ((e.reason && e.reason.message) || e.reason)); });
+</script>
+<main>
+  <h1>Trung tâm điều khiển thông minh</h1>
+  <p class="sub">Xem màn hình chính, điều khiển hub và các kênh GPIO của board ESP phụ qua Bluetooth</p>
+
+  <div id="warn"></div>
+
+  <div class="bar">
+    <div class="pill" id="pill"><i class="dot"></i><span id="pillText">Chưa kết nối</span></div>
+    <button class="primary" id="btnConn">Kết nối</button>
+  </div>
+
+  <section class="tabpane act" data-tab="home">
+  <div class="home off" id="home">
+    <div class="row1">
+      <div class="clock"><span id="hClock">--:--</span><small id="hSec">--</small></div>
+      <div class="dt"><b id="hDay">---</b><span id="hDate">--/--/----</span><div class="lunar" id="hLunar"></div></div>
+    </div>
+    <div class="loc" id="hLoc"></div>
+    <div class="tiles">
+      <div class="tile"><h3>Trong nhà</h3><div class="big t" id="hTin">--.-°C</div><div class="hum" id="hHin">--%</div></div>
+      <div class="tile"><h3>Ngoài trời</h3>
+        <div class="wx"><span class="ic" id="hIc">·</span><div><div class="big t" id="hTout">--.-°C</div><div class="hum" id="hHout">--%</div></div></div>
+        <div class="wxt" id="hWx">Chưa có dữ liệu</div><div class="wxs" id="hWxs"></div></div>
+    </div>
+    <div class="chips">
+      <div class="chip" id="cBat"><span class="bat" id="batIc"><b id="batFill"></b></span><span id="batTxt">Pin --%</span></div>
+      <div class="chip" id="cWifi"><i></i><span id="wifiTxt">WiFi</span></div>
+      <div class="chip" id="cNet"><i></i><span id="netTxt">Internet</span></div>
+      <div class="chip" id="cNode"><i></i><span id="nodeTxt">ESP phụ</span></div>
+      <div class="chip" id="cHw"><i></i><span id="hwTxt">Phần cứng</span></div>
+    </div>
+  </div>
+  </section>
+
+  <section class="tabpane" data-tab="dev">
+  <div class="sethead">Thiết bị trên hub</div>
+  <div class="grid" id="hubGrid"></div>
+  </section>
+
+  <section class="tabpane" data-tab="esp">
+  <div class="sethead">Kênh ESP phụ</div>
+  <div class="link" id="link"><i class="dot"></i><span id="linkText">Chưa kết nối với hub</span><span class="cnt" id="cnt"></span></div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="actions">
+    <button id="btnAllOff" class="danger" disabled>Tắt tất cả ESP phụ</button>
+    <button id="btnReset" disabled>RESET lỗi</button>
+    <button id="btnEdit">Đặt tên kênh</button>
+  </div>
+  </section>
+
+  <section class="tabpane" data-tab="set">
+  <div class="sethead">Cài đặt</div>
+  <div class="box">
+    <h4>Mã PIN điều khiển</h4>
+    <label class="pin" style="margin:6px 0 0">
+      <input id="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="Nhập mã PIN của hub">
+    </label>
+    <p>Mã PIN là REMOTE_PIN trong code hub. Chỉ cần khi gửi lệnh; xem thông tin thì không cần.</p>
+  </div>
+  <div class="box">
+    <h4>Kết nối</h4>
+    <p id="setConn">Chưa kết nối</p>
+    <div class="actions"><button id="btnDisc" class="danger">Ngắt kết nối</button></div>
+  </div>
+  <div class="box" id="updBox">
+    <h4>Cập nhật app</h4>
+    <p id="verTxt">Giao diện v? · App build ?</p>
+    <label class="pin" style="margin:6px 0 0"><input id="repo" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Kho GitHub: tên/kho (ví dụ hooj/hub-app)"></label>
+    <div class="actions"><button id="btnUpd">Kiểm tra cập nhật</button></div>
+    <div class="actions"><button id="btnApply" class="primary" style="display:none">Áp dụng giao diện mới</button></div>
+    <div class="actions"><button id="btnApk" class="primary" style="display:none">Tải APK mới</button></div>
+    <p id="updMsg"></p>
+    <div class="actions"><button id="btnUiReset">Về giao diện gốc của app</button><button id="btnForget">Chọn lại hub</button></div>
+  </div>
+  <p class="foot">Trên hub: Bluetooth tự bật khi hub khởi động và tự tắt sau 5 phút nếu chưa có ai kết nối (bật lại ở Menu → Bluetooth). Mã PIN là REMOTE_PIN trong code hub. Tên kênh chỉ lưu trên điện thoại này. Trong app Android, hub đã chọn được lưu và tự nối lại. Trên Chrome cần Chrome Android hoặc máy tính (iPhone không hỗ trợ Web Bluetooth).</p>
+  </section>
+  <div id="msg" role="status"></div>
+</main>
+
+<div class="tabs"><nav id="tabs">
+  <button data-t="home" class="act"><span class="ti">🏠</span>Màn chính</button>
+  <button data-t="dev"><span class="ti">💡</span>Thiết bị</button>
+  <button data-t="esp"><span class="ti">🔌</span>ESP phụ<span class="bd" id="bdEsp">!</span></button>
+  <button data-t="set"><span class="ti">⚙️</span>Cài đặt<span class="bd" id="bdSet">!</span></button>
+</nav></div>
+
+<script>
+(() => {
+  const SVC = '6e400101-b5a3-f393-e0a9-e50e24dcca9e';
+  const CMD = '6e400104-b5a3-f393-e0a9-e50e24dcca9e';
+  const STA = '6e400105-b5a3-f393-e0a9-e50e24dcca9e';   // trạng thái chung + kết quả lệnh
+  const ESP = '6e400106-b5a3-f393-e0a9-e50e24dcca9e';   // trạng thái kênh ESP phụ
+  // thông tin màn hình chính của hub (bản firmware mới có gửi màn chính): T giờ ngày | M nhiệt ẩm thời tiết | Y hệ thống | L, l địa điểm (2 phần)
+  const INFO = ['6e400107', '6e400108', '6e400109', '6e40010a', '6e40010b'].map((p) => p + '-b5a3-f393-e0a9-e50e24dcca9e');
+  const MAXCH = 16;
+
+  const RESULT = {
+    BADPIN: 'Sai mã PIN.',
+    BADCMD: 'Lệnh không hợp lệ.',
+    NOLINK: 'Hub chưa nối được ESP phụ, chưa điều khiển được.',
+    AUTOLK: 'Thiết bị đang do chế độ TỰ ĐỘNG quản lý. Tắt TỰ ĐỘNG trước.',
+    LOCKED: 'Thiết bị đang bị khóa do lỗi. Bấm RESET lỗi.',
+    BUSY: 'Thiết bị đang xử lý, thử lại sau ít giây.',
+    DRYWAIT: 'Máy sấy đang trong thời gian khóa an toàn, chưa bật lại được.',
+    NOAUTO: 'Chưa chọn thiết bị nào cho TỰ ĐỘNG. Chọn trên màn hình hub trước.',
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const hubGrid = $('hubGrid'), grid = $('grid'), pill = $('pill'), pillText = $('pillText'), msg = $('msg');
+  let connected = false, connecting = false, userOff = false;
+  let want = 0, have = 0, linked = false, nch = 0, got = false, pump = 255;   // pump: cờ bơm (255 = chưa có)
+  const PUMP_CH = 3;   // R4   // trạng thái kênh
+  let codes = null, lvl = 100, lvlHold = 0;      // trạng thái thiết bị trên hub (8 ký tự), độ sáng Đèn 1
+  // Thiết bị của chính hub (Đèn 2 / Quạt / Máy sấy nằm trên kênh R1..R3 của ESP phụ, đã có bên dưới)
+  const HUBDEV = [
+    { key: 'WIFI', idx: 0, name: 'Trạm phát WiFi', ctl: true, confirmOff: 'Tắt Trạm phát WiFi? Thiết bị đang dùng mạng này sẽ mất kết nối.' },
+    { key: 'L1',   idx: 1, name: 'Đèn 1', ctl: true },
+    { key: 'AUTO', idx: 6, name: 'Tự động', ctl: true, confirmOff: 'Tắt chế độ TỰ ĐỘNG? Các thiết bị do TỰ ĐỘNG quản lý sẽ bị tắt.' },
+    { key: 'BL',   idx: 4, name: 'Đèn nền', ctl: false, hint: 'Tự động theo ánh sáng' },
+    { key: 'NET',  idx: 7, name: 'Trực tuyến', ctl: false, hint: 'Hub có internet' },
+  ];
+  let queue = Promise.resolve();
+  let msgTimer = 0;
+  let editing = false;
+  const hold = {};                       // kênh -> mốc thời gian tạm giữ trạng thái "đang chờ" sau khi bấm
+
+  const store = {
+    get(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+  };
+  let names = {};
+  try { names = JSON.parse(store.get('names') || '{}') || {}; } catch (e) { names = {}; }
+  const DEFAULT = { 0: 'Đèn 2', 1: 'Quạt', 2: 'Máy sấy', 3: 'Máy bơm' };   // R1..R3 gắn sẵn thiết bị trên hub
+  const nameOf = (i) => (names[i] && String(names[i]).trim()) || DEFAULT[i] || ('R' + (i + 1));
+
+  function say(t, ms = 5000) {
+    msg.textContent = t || '';
+    clearTimeout(msgTimer);
+    if (t && ms) msgTimer = setTimeout(() => { msg.textContent = ''; }, ms);
+  }
+
+  // ---- thẻ thiết bị trên hub ----
+  const hubCards = HUBDEV.map((d) => {
+    const el = document.createElement('div');
+    el.className = 'card off disc' + (d.ctl ? '' : ' ro');
+    el.innerHTML = '<div class="top"><span class="name"></span><span class="badge"></span></div><div class="state">—</div><div class="hint"></div>' +
+      (d.key === 'L1' ? '<div class="step"><button type="button" data-d="-5" aria-label="Giảm độ sáng">−</button><span class="pct">--</span><button type="button" data-d="5" aria-label="Tăng độ sáng">+</button></div>' : '');
+    el.querySelector('.name').textContent = d.name;
+    el.querySelector('.hint').textContent = d.hint || '';
+    if (d.ctl) {
+      el.setAttribute('role', 'button'); el.tabIndex = 0;
+      el.addEventListener('click', () => hubToggle(d));
+      el.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === el) { e.preventDefault(); el.click(); } });
+    }
+    hubGrid.appendChild(el);
+    return el;
+  });
+
+  function renderHub() {
+    HUBDEV.forEach((d, k) => {
+      const el = hubCards[k], c = codes ? codes[d.idx] : null;
+      let cls = 'off', state = 'TẮT', badge = 'OFF';
+      if (c === '1') { cls = 'on'; state = d.key === 'NET' ? 'TRỰC TUYẾN' : 'BẬT'; badge = 'ON'; }
+      else if (c === '2') { cls = 'wait'; state = 'ĐANG KHỞI ĐỘNG'; badge = '...'; }
+      else if (c === '3') { cls = 'err'; state = 'LỖI'; badge = 'LỖI'; }
+      else if (c === '4') { cls = 'err'; state = 'MẤT TÍN HIỆU'; badge = '!'; }
+      else if (c === '5') { cls = 'auto'; state = 'TỰ ĐỘNG'; badge = 'TẮT'; }
+      else if (c === '6') { cls = 'auto'; state = 'TỰ ĐỘNG'; badge = 'BẬT'; }
+      else if (d.key === 'NET') state = 'NGOẠI TUYẾN';
+      if (!codes) { state = '—'; badge = ''; }
+      el.className = 'card ' + cls + (d.ctl ? '' : ' ro') + (connected ? '' : ' disc');
+      el.querySelector('.state').textContent = state;
+      el.querySelector('.badge').textContent = badge;
+      if (d.key === 'L1') {
+        el.classList.add('has-step');
+        const bad = !connected || !codes || c === '3' || c === '4';
+        el.querySelectorAll('.step button').forEach((b) => { b.disabled = bad; });
+        el.querySelector('.pct').textContent = codes ? lvl + '%' : '--';
+        el.querySelector('.hint').textContent = !connected || !codes ? '' : (c === '1' || c === '6' ? 'Độ sáng PWM' : 'Bấm - / + để bật đèn');
+      }
+    });
+    $('btnReset').disabled = !connected;
+  }
+
+  function hubToggle(d) {
+    if (!connected || !codes) return;
+    const c = codes[d.idx], isOn = c === '1';
+    if (c === '5' || c === '6') { say(RESULT.AUTOLK); return; }
+    if (c === '2') { say(RESULT.BUSY); return; }
+    if (isOn && d.confirmOff && !window.confirm(d.confirmOff)) return;
+    send(d.key + '=' + (isOn ? 0 : 1));
+  }
+  $('btnReset').addEventListener('click', () => { if (connected && window.confirm('Xóa lỗi các thiết bị đang báo lỗi?')) send('RESET'); });
+
+  // nút - % + của Đèn 1: bấm hoặc giữ để chỉnh, gộp nhiều lần bấm thành một lệnh
+  (() => {
+    let sendTimer = 0, holdDelay = 0, holdRep = 0;
+    const bump = (dd) => {
+      if (!connected || !codes) return;
+      lvl = Math.max(5, Math.min(100, lvl + dd));
+      lvlHold = Date.now() + 1500;
+      renderHub();
+      clearTimeout(sendTimer);
+      sendTimer = setTimeout(() => { send('L1P=' + lvl); }, 180);
+    };
+    const stop = () => { clearTimeout(holdDelay); clearInterval(holdRep); };
+    hubCards[1].querySelectorAll('.step button').forEach((b) => {
+      const dd = parseInt(b.dataset.d, 10);
+      b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); bump(dd); holdDelay = setTimeout(() => { holdRep = setInterval(() => bump(dd), 130); }, 450); });
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => b.addEventListener(ev, stop));
+      b.addEventListener('click', (e) => e.stopPropagation());
+    });
+  })();
+
+  // ---- dựng 16 thẻ, hiện đủ số kênh hub báo ----
+  const cards = [];
+  for (let i = 0; i < MAXCH; i++) {
+    const el = document.createElement('div');
+    el.className = 'card disc hide';
+    el.setAttribute('role', 'button'); el.tabIndex = 0;
+    el.innerHTML = '<div class="top"><span class="name"></span><span class="ch"></span></div><div class="state">—</div>';
+    if (i === PUMP_CH) {                                          // thẻ máy bơm: 2 giọt nước + 3 ô chế độ
+      const drop = '<svg viewBox="0 0 24 30" aria-hidden="true"><path d="M12 1C12 1 3 13 3 20a9 9 0 0 0 18 0C21 13 12 1 12 1z" fill="currentColor"/></svg>';
+      el.removeAttribute('role'); el.removeAttribute('tabindex');
+      el.innerHTML = '<div class="top"><span class="name"></span><span class="ch"></span></div>' +
+        '<div class="probes"><div class="pr" data-p="low"><div><b>BỂ CẠN</b><small>---</small></div>' + drop + '</div>' +
+        '<div class="pr" data-p="full"><div><b>BỂ ĐẦY</b><small>---</small></div>' + drop + '</div></div>' +
+        '<div class="modes"><button data-m="A">TỰ ĐỘNG</button><button data-m="0">TAY TẮT</button><button data-m="1">TAY BẬT</button></div>' +
+        '<div class="state">—</div><div class="sub2"></div><button class="clr danger" data-m="C">XÓA LỖI</button>';
+      el.querySelectorAll('button').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); pumpCmd(b.dataset.m); }));
+      el.addEventListener('click', () => { if (editing) rename(i); });
+      grid.appendChild(el); cards.push(el);
+      continue;
+    }
+    el.addEventListener('click', () => (editing ? rename(i) : toggle(i)));
+    el.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === el) { e.preventDefault(); el.click(); } });
+    grid.appendChild(el);
+    cards.push(el);
+  }
+
+  const bit = (m, i) => (m >> i) & 1;
+
+  // lệnh máy bơm: A tự động | 0 tay tắt | 1 tay bật | C xóa lỗi
+  function pumpCmd(m) {
+    if (!connected || !got) return;
+    if (!linked) { say(RESULT.NOLINK); return; }
+    if (pump === 255) { say('Chưa nhận trạng thái máy bơm từ node.'); return; }
+    send('PUMP=' + m);
+  }
+
+  function renderPump(el, i, w, h) {
+    const ok = connected && linked && pump !== 255;
+    const fault = ok ? ((pump >> 4) & 3) : 0, manual = ok && (pump & 4), run = ok && (pump & 8);
+    const dry = ok && (pump & 1), full = ok && (pump & 2);
+    el.className = 'card pump ' + (!connected || !linked ? 'disc' : (fault ? 'err' : (run ? 'on' : (manual ? 'off' : 'auto')))) + (editing ? ' edit' : '');
+    el.querySelector('.name').textContent = nameOf(i);
+    el.querySelector('.ch').textContent = 'R' + (i + 1);
+    const low = el.querySelector('[data-p="low"]'), fl = el.querySelector('[data-p="full"]');
+    low.className = 'pr' + (ok ? (dry ? ' dry' : ' wet') : '');
+    low.querySelector('small').textContent = !ok ? '---' : (dry ? 'ĐẦU DÒ CẠN: KHÔ' : 'CÓ NƯỚC');
+    fl.className = 'pr' + (ok && full ? ' wet' : '');
+    fl.querySelector('small').textContent = !ok ? '---' : (full ? 'ĐẦU DÒ ĐẦY: ƯỚT' : 'CHƯA ĐẦY');
+    const act = !ok ? '' : (!manual ? 'A' : (run ? '1' : '0'));
+    el.querySelectorAll('.modes button').forEach((b) => b.classList.toggle('act', b.dataset.m === act));
+    let st = '---', sb = '';
+    if (!connected || !linked) { st = '---'; }
+    else if (pump === 255) { st = '...'; sb = 'Đang chờ dữ liệu từ node'; }
+    else if (fault) { st = 'LỖI MÁY BƠM'; sb = fault === 1 ? 'Bơm quá lâu chưa đầy - đã TẮT' : 'Đầu dò bất thường - đã TẮT'; }
+    else if (run) { st = 'ĐANG BƠM'; sb = manual ? 'Chế độ TAY (dừng khi đầy)' : 'Chế độ TỰ ĐỘNG'; }
+    else if (manual) { st = 'TAY: ĐANG TẮT'; sb = 'Chạm TỰ ĐỘNG hoặc TAY BẬT để đổi'; }
+    else { st = 'TỰ ĐỘNG: CHỜ'; sb = full ? 'Bể đã đầy' : 'Cạn là tự bật bơm'; }
+    el.querySelector('.state').textContent = st;
+    el.querySelector('.sub2').textContent = sb;
+    el.querySelectorAll('button').forEach((b) => { b.disabled = !ok; });
+  }
+
+  function render() {
+    renderHub();
+    const n = got ? nch : 0;
+    let on = 0;
+    cards.forEach((el, i) => {
+      el.classList.toggle('hide', i >= n);
+      if (i >= n) return;
+      const w = bit(want, i), h = bit(have, i);
+      if (i === PUMP_CH) { renderPump(el, i, w, h); if (h) on++; return; }
+      let cls = 'off', state = 'TẮT';
+      if (!connected || !linked) { cls = 'disc'; state = '---'; }
+      else if (w !== h) { cls = 'wait'; state = '...'; }
+      else if (h) { cls = 'on'; state = 'BẬT'; on++; }
+      el.className = 'card ' + cls + (editing ? ' edit' : '');
+      el.querySelector('.name').textContent = nameOf(i);
+      el.querySelector('.ch').textContent = 'R' + (i + 1);
+      el.querySelector('.state').textContent = state;
+      el.setAttribute('aria-disabled', String(cls === 'disc'));
+    });
+    const lk = $('link');
+    lk.className = 'link' + (!connected ? '' : (linked ? ' ok' : ' wait'));
+    $('linkText').textContent = !connected ? 'Chưa kết nối với hub'
+      : (!got ? 'Đang đọc trạng thái...' : (linked ? 'Hub đã nối ESP phụ (GPIO-NODE1)' : 'Hub đang tìm ESP phụ...'));
+    $('cnt').textContent = connected && got && linked ? on + '/' + n + ' BẬT' : '';
+    $('btnAllOff').disabled = !(connected && got && linked);
+    $('bdEsp').parentNode.classList.toggle('has', connected && got && !linked);
+    renderHome();
+  }
+
+  function setConn(kind, text) {
+    pill.className = 'pill' + (kind ? ' ' + kind : '');
+    pillText.textContent = text;
+    $('setConn').textContent = text;
+    $('btnDisc').disabled = !connected;
+    $('btnConn').textContent = connected ? 'Ngắt kết nối' : 'Kết nối';
+    $('btnConn').classList.toggle('danger', connected);
+    $('btnConn').classList.toggle('primary', !connected);
+    render();
+  }
+
+
+  // ---- MÀN HÌNH CHÍNH CỦA HUB ----
+  const home = { t: null, m: null, y: null, loc1: '', loc2: '' };
+  const DOW = ['Chủ Nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+  // mã thời tiết WMO -> [biểu tượng, chữ]
+  function wmo(c, day) {
+    const d = (a, b, t) => [day ? a : b, t];
+    if (c === 0) return d('☀️', '🌙', 'Trời quang');
+    if (c === 1) return d('🌤️', '🌙', 'Ít mây');
+    if (c === 2) return d('⛅', '☁️', 'Mây rải rác');
+    if (c === 3) return d('☁️', '☁️', 'Nhiều mây');
+    if (c === 45 || c === 48) return d('🌫️', '🌫️', 'Sương mù');
+    if (c >= 51 && c <= 57) return d('🌦️', '🌧️', 'Mưa phùn');
+    if (c >= 61 && c <= 67) return d('🌧️', '🌧️', 'Mưa');
+    if (c >= 71 && c <= 77) return d('❄️', '❄️', 'Tuyết');
+    if (c >= 80 && c <= 82) return d('🌦️', '🌧️', 'Mưa rào');
+    if (c === 85 || c === 86) return d('🌨️', '🌨️', 'Mưa tuyết');
+    if (c >= 95) return d('⛈️', '⛈️', 'Dông');
+    return d('·', '·', 'Không rõ');
+  }
+  const tNum = (s) => (/^[+-]\d{3}$/.test(s) ? (parseInt(s, 10) / 10) : null);
+  const iNum = (s) => (/^\d+$/.test(s) ? parseInt(s, 10) : null);
+  const fmtT = (v) => (v === null ? '--.-°C' : v.toFixed(1) + '°C');
+  const fmtH = (v) => (v === null ? '--%' : v + '%');
+  const chip = (id, cls, text, tid) => { $(id).className = 'chip' + (cls ? ' ' + cls : ''); $(tid).textContent = text; };
+
+  function renderHome() {
+    const t = home.t, m = home.m, y = home.y;
+    $('home').classList.toggle('off', !connected || !(t || m || y));
+    if (t && t.lost) { $('hClock').textContent = '--:--'; $('hSec').textContent = '--'; $('hDay').textContent = 'Mất đồng hồ DS3231'; $('hDate').textContent = ''; $('hLunar').textContent = ''; }
+    else if (t) {
+      $('hClock').textContent = t.hh + ':' + t.mm; $('hSec').textContent = t.ss;
+      $('hDay').textContent = DOW[t.w] || '---'; $('hDate').textContent = t.dd + '/' + t.mo + '/' + t.yy;
+      $('hLunar').textContent = t.ld + '/' + t.lm + ' ÂM';
+    } else { $('hClock').textContent = '--:--'; $('hSec').textContent = '--'; $('hDay').textContent = '---'; $('hDate').textContent = '--/--/----'; $('hLunar').textContent = ''; }
+    const loc = (home.loc1 + home.loc2).trim();
+    $('hLoc').textContent = loc ? '📍 ' + loc : '';
+    $('hTin').textContent = fmtT(m ? m.tin : null); $('hHin').textContent = '💧 ' + fmtH(m ? m.hin : null);
+    $('hTout').textContent = fmtT(m ? m.tout : null); $('hHout').textContent = '💧 ' + fmtH(m ? m.hout : null);
+    if (m && m.wc !== null) { const w = wmo(m.wc, m.day); $('hIc').textContent = w[0]; $('hWx').textContent = w[1]; }
+    else { $('hIc').textContent = '·'; $('hWx').textContent = m && m.tout === null ? 'Chưa có thời tiết online' : 'Chưa có dữ liệu'; }
+    $('hWxs').textContent = y && m && m.tout !== null ? [y.rain !== null ? '☔ ' + y.rain + '%' : '', y.wind !== null ? '🌬 ' + (y.wind / 10).toFixed(1) + ' km/h' : ''].filter(Boolean).join('   ') : '';
+    if (y) {
+      $('batIc').className = 'bat' + (y.bat <= 15 ? ' lo' : (y.bat <= 35 ? ' mid' : ''));
+      $('batFill').style.width = Math.max(0, Math.min(100, y.bat)) * 0.26 + 'px';
+      $('batTxt').textContent = 'Pin ' + y.bat + '%' + (y.chg ? ' ⚡ ' + (y.vin / 10).toFixed(1) + 'V' : '');
+      chip('cWifi', y.wifi === 2 ? 'g' : (y.wifi === 1 ? 'y' : 'r'), y.wifi === 2 ? 'WiFi: đã nối' : (y.wifi === 1 ? 'WiFi: đang nối' : 'WiFi: mất'), 'wifiTxt');
+      chip('cNet', y.net ? 'g' : '', y.net ? 'Có internet' : 'Chưa có internet', 'netTxt');
+      chip('cNode', y.node ? 'g' : 'y', y.node ? 'ESP phụ: đã nối' : 'ESP phụ: chưa nối', 'nodeTxt');
+      chip('cHw', y.led === 2 ? 'g' : (y.led === 1 ? 'y' : 'r'), y.led === 2 ? 'Phần cứng: đang chạy' : (y.led === 1 ? 'Phần cứng: bình thường' : 'Phần cứng: có lỗi'), 'hwTxt');
+    } else {
+      $('batIc').className = 'bat'; $('batFill').style.width = '0'; $('batTxt').textContent = 'Pin --%';
+      chip('cWifi', '', 'WiFi', 'wifiTxt'); chip('cNet', '', 'Internet', 'netTxt'); chip('cNode', '', 'ESP phụ', 'nodeTxt'); chip('cHw', '', 'Phần cứng', 'hwTxt');
+    }
+  }
+
+  function onInfo(text) {
+    let m;
+    if (text === 'TLOST') { home.t = { lost: true }; }
+    else if ((m = /^T(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{4})(\d)(\d{2})(\d{2})$/.exec(text))) {
+      home.t = { hh: m[1], mm: m[2], ss: m[3], dd: m[4], mo: m[5], yy: m[6], w: parseInt(m[7], 10), ld: m[8], lm: m[9] };
+    } else if ((m = /^M([+-]\d{3}|----)(\d{3}|---)([+-]\d{3}|----)(\d{3}|---)(\d{2}|--)([01])$/.exec(text))) {
+      home.m = { tin: tNum(m[1]), hin: iNum(m[2]), tout: tNum(m[3]), hout: iNum(m[4]), wc: iNum(m[5]), day: m[6] === '1' };
+    } else if ((m = /^Y(\d{3})([01])(\d{3})([012])([01])([01])(\d{3}|---)(\d{3}|---)([012])$/.exec(text))) {
+      home.y = { bat: parseInt(m[1], 10), chg: m[2] === '1', vin: parseInt(m[3], 10), wifi: parseInt(m[4], 10), net: m[5] === '1', node: m[6] === '1',
+                 rain: iNum(m[7]), wind: iNum(m[8]), led: parseInt(m[9], 10) };
+    } else if (text[0] === 'L') { home.loc1 = text.slice(1); }
+    else if (text[0] === 'l') { home.loc2 = text.slice(1); }
+    else return;
+    renderHome();
+  }
+
+  // ---- trạng thái từ hub ----
+  const dec = new TextDecoder();
+  const readValue = (dv) => dec.decode(dv.buffer.slice(dv.byteOffset, dv.byteOffset + dv.byteLength));
+
+  // "E" + muốn(4 hex) + thực(4 hex) + nối(0/1) + số kênh(2 số)
+  function onEsp(text) {
+    const m = /^E([0-9A-Fa-f]{4})([0-9A-Fa-f]{4})([01])([0-9]{2})([0-9A-Fa-f]{2})?/.exec(text);
+    if (!m) return;
+    pump = m[5] ? parseInt(m[5], 16) : 255;
+    want = parseInt(m[1], 16); have = parseInt(m[2], 16); linked = m[3] === '1';
+    nch = Math.min(MAXCH, parseInt(m[4], 10)); got = true;
+    render();
+  }
+
+  // "S01001001000,OK" -> chỉ lấy kết quả lệnh ở cuối
+  function onStatus(text) {
+    const m = /^S([0-9]{8})([0-9]{3})?,?([A-Z]*)/.exec(text);
+    if (!m) return;
+    codes = m[1];
+    if (m[2] && Date.now() >= lvlHold) { const v = parseInt(m[2], 10); if (v >= 5 && v <= 100) lvl = v; }
+    render();
+    if (m[3] && m[3] !== 'OK') say(RESULT[m[3]] || ('Lỗi: ' + m[3]));
+  }
+
+  // ---- gửi lệnh ----
+  function send(cmd) {
+    const pin = $('pin').value.trim();
+    if (!pin) { say('Nhập mã PIN trong tab Cài đặt trước.'); showTab('set'); $('pin').focus(); return Promise.resolve(); }
+    store.set('pin', pin);
+    const bytes = new TextEncoder().encode(pin + ':' + cmd);
+    queue = queue.then(() => { if (!connected) throw new Error('chưa kết nối'); return tr.write(bytes); }).catch((e) => { say('Gửi lệnh lỗi: ' + (e.message || e)); });
+    return queue;
+  }
+
+  function toggle(i) {
+    if (!connected || !got) return;
+    if (!linked) { say(RESULT.NOLINK); return; }
+    if (i === PUMP_CH) {                                          // bơm: lỗi -> xóa; còn lại đổi vòng TỰ ĐỘNG > TAY TẮT > TAY BẬT
+      if (pump === 255) return;
+      if ((pump >> 4) & 3) send('PUMP=C');
+      else if (!(pump & 4)) send('PUMP=0');
+      else if (!(pump & 8)) send('PUMP=1');
+      else send('PUMP=A');
+      return;
+    }
+    const isOn = bit(want, i) === 1;
+    want = isOn ? (want & ~(1 << i)) : (want | (1 << i));     // hiện ngay "..." cho đỡ trễ, hub sẽ xác nhận lại
+    render();
+    send('R' + (i + 1) + '=' + (isOn ? 0 : 1));
+  }
+
+  $('btnAllOff').addEventListener('click', () => {
+    if (!connected || !linked) return;
+    if (!window.confirm('Tắt tất cả các kênh?')) return;
+    want = 0; render();
+    send('RALL=0');
+  });
+
+  // ---- đặt tên kênh (chỉ lưu trên điện thoại này) ----
+  function rename(i) {
+    const cur = names[i] || '';
+    const v = window.prompt('Tên cho kênh R' + (i + 1) + ' (để trống = tên mặc định)', cur);
+    if (v === null) return;
+    const t = v.trim().slice(0, 20);
+    if (t) names[i] = t; else delete names[i];
+    store.set('names', JSON.stringify(names));
+    render();
+  }
+  $('btnEdit').addEventListener('click', () => {
+    editing = !editing;
+    $('btnEdit').textContent = editing ? 'Xong' : 'Đặt tên kênh';
+    $('btnEdit').classList.toggle('primary', editing);
+    say(editing ? 'Chạm vào kênh để đặt tên.' : '');
+    render();
+  });
+
+  // ---- kết nối ----
+  // ---- tab dưới ----
+  function showTab(t) {
+    document.querySelectorAll('.tabpane').forEach((e) => e.classList.toggle('act', e.dataset.tab === t));
+    document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('act', b.dataset.t === t));
+    try { localStorage.setItem('tab', t); } catch (e) {}
+    window.scrollTo(0, 0);
+  }
+  document.getElementById('tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) showTab(b.dataset.t); });
+  try { const t = localStorage.getItem('tab'); if (t && document.querySelector('.tabpane[data-tab="' + t + '"]')) showTab(t); } catch (e) {}
+  document.getElementById('btnDisc').addEventListener('click', () => disconnect());
+
+  // ---- lớp Bluetooth: Chrome (Web Bluetooth) hoặc app Android (plugin BluetoothLe) ----
+  const CAP = window.Capacitor;
+  const NATIVE = !!(CAP && CAP.isNativePlatform && CAP.isNativePlatform());
+  const dbg = (t) => { try { window.__dbg(t); } catch (e) {} };
+  const withTO = (p, ms, name) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(name + ' không phản hồi sau ' + (ms / 1000) + 's')), ms))]);
+  let BLE = null;
+  try { BLE = NATIVE ? CAP.registerPlugin('BluetoothLe') : null; } catch (e) { dbg('registerPlugin lỗi: ' + (e.message || e)); }
+  if (NATIVE) {
+    let pl = ''; try { pl = Object.keys(CAP.Plugins || {}).join(','); } catch (e) {}
+    dbg('app v' + ((document.querySelector('meta[name="ui-version"]') || {}).content) + ' nền=' + (CAP.getPlatform ? CAP.getPlatform() : '?') + ' BLE=' + (BLE ? 'có' : 'KHÔNG') + ' plugins=' + pl);
+  } else dbg('chạy trên trình duyệt (không phải app)');
+  const hex = (u8) => Array.from(u8, (b) => b.toString(16).padStart(2, '0')).join('');
+  const unhex = (h) => { const a = new Uint8Array(((h || '').length / 2) | 0); for (let k = 0; k < a.length; k++) a[k] = parseInt(h.substr(k * 2, 2), 16); return a; };
+  const hexTxt = (h) => dec.decode(unhex(h));
+
+  const webTr = {
+    dev: null, svc: null, chars: {}, name: '',
+    ok: () => !!navigator.bluetooth,
+    async open(onLost) {
+      if (!this.dev) {
+        this.dev = await navigator.bluetooth.requestDevice({ filters: [{ services: [SVC] }], optionalServices: [SVC] });
+        this.dev.addEventListener('gattserverdisconnected', () => this.lost && this.lost());
+      }
+      this.lost = onLost; this.name = this.dev.name || 'ESP32'; this.chars = {};
+      const server = await this.dev.gatt.connect();
+      this.svc = await server.getPrimaryService(SVC);
+    },
+    async chr(u) { return this.chars[u] || (this.chars[u] = await this.svc.getCharacteristic(u)); },
+    async read(u) { return readValue(await (await this.chr(u)).readValue()); },
+    async notify(u, cb) {
+      const c = await this.chr(u);
+      c.addEventListener('characteristicvaluechanged', (ev) => cb(readValue(ev.target.value)));
+      await c.startNotifications();
+    },
+    async write(bytes) { await (await this.chr(CMD)).writeValue(bytes); },
+    close() { if (this.dev && this.dev.gatt.connected) this.dev.gatt.disconnect(); },
+    forget() { this.dev = null; },
+  };
+
+  const natTr = {
+    id: store.get('bleId'), name: store.get('bleName') || '', subs: [],
+    ok: () => !!BLE,
+    async clearSubs() { const a = this.subs; this.subs = []; for (const h of a) { try { await h.remove(); } catch (e) {} } },
+    async open(onLost) {
+      dbg('initialize...');
+      await withTO(BLE.initialize({ androidNeverForLocation: true }), 25000, 'initialize');
+      dbg('initialize xong');
+      if (!this.id) {                                             // lần đầu: chọn hub, các lần sau tự nối lại
+        dbg('requestDevice...');
+        const d = await withTO(BLE.requestDevice({ services: [SVC] }), 90000, 'requestDevice');
+        dbg('đã chọn ' + (d.name || '') + ' ' + d.deviceId);
+        this.id = d.deviceId; this.name = d.name || 'ESP32';
+        store.set('bleId', this.id); store.set('bleName', this.name);
+      }
+      await this.clearSubs();
+      this.subs.push(await BLE.addListener('disconnected|' + this.id, () => onLost && onLost()));
+      dbg('connect ' + this.id);
+      await withTO(BLE.connect({ deviceId: this.id, timeout: 10000 }), 20000, 'connect');
+      dbg('connect xong');
+    },
+    async read(u) { return hexTxt((await BLE.read({ deviceId: this.id, service: SVC, characteristic: u })).value); },
+    async notify(u, cb) {
+      this.subs.push(await BLE.addListener('notification|' + this.id + '|' + SVC + '|' + u, (ev) => cb(hexTxt(ev.value))));
+      await BLE.startNotifications({ deviceId: this.id, service: SVC, characteristic: u });
+    },
+    async write(bytes) { await BLE.write({ deviceId: this.id, service: SVC, characteristic: CMD, value: hex(bytes) }); },
+    close() { const id = this.id; BLE.disconnect({ deviceId: id }).catch(() => {}).then(() => onLost()); },
+    forget() { this.id = ''; this.name = ''; store.set('bleId', ''); store.set('bleName', ''); },
+  };
+  const tr = NATIVE ? natTr : webTr;
+
+  async function openGatt() {
+    setConn('busy', 'Đang kết nối...');
+    await tr.open(onLost);
+    let sta = true;
+    await tr.notify(STA, onStatus);
+    try { onStatus(await tr.read(STA)); } catch (e) {}
+    let esp = true;
+    try { await tr.notify(ESP, onEsp); } catch (e) { esp = false; }
+    if (!esp) {
+      connected = true; setConn('ok', 'Đã kết nối: ' + (tr.name || 'ESP32'));
+      say('Hub chưa có phần điều khiển ESP (cần firmware v21.0 trở lên). Nạp lại hub.', 0);
+      return;
+    }
+    connected = true;
+    setConn('ok', 'Đã kết nối: ' + (tr.name || 'ESP32'));
+    try { onEsp(await tr.read(ESP)); } catch (e) {}
+    for (const u of INFO) {                                       // thông tin màn chính: hub cũ không có thì bỏ qua
+      try {
+        await tr.notify(u, onInfo);
+        try { onInfo(await tr.read(u)); } catch (e) {}
+      } catch (e) { /* chưa có trong firmware này */ }
+    }
+    if (!home.t && !home.m && !home.y) say('Hub chưa gửi thông tin màn hình chính (cần bản firmware mới có gửi màn chính). Nạp lại hub.', 0);
+    if ($('pin').value.trim()) { try { await tr.write(new TextEncoder().encode($('pin').value.trim() + ':GET')); } catch (e) {} }
+  }
+
+  let rcTimer = 0;
+  function scheduleReconnect(ms) {                                // chỉ trong app: hub đã lưu thì tự nối lại
+    if (!NATIVE || !natTr.id || userOff) return;
+    clearTimeout(rcTimer);
+    rcTimer = setTimeout(async () => {
+      if (connected || connecting) return;
+      await connect(true);
+      if (!connected) scheduleReconnect(6000);
+    }, ms);
+  }
+  function onLost() {
+    const was = connected;
+    connected = false; got = false; linked = false; codes = null; home.t = home.m = home.y = null; home.loc1 = home.loc2 = '';
+    if (connecting) return;                                       // đang thử nối: kết quả do connect() xử lý
+    setConn('', 'Mất kết nối');
+    if (was && !userOff) say(NATIVE ? 'Mất kết nối, đang thử nối lại...' : 'Mất kết nối Bluetooth. Bấm "Kết nối" để thử lại.', 0);
+    scheduleReconnect(3000);
+  }
+
+  async function connect(quiet) {
+    dbg('connect() quiet=' + quiet + ' connecting=' + connecting);
+    if (connecting) return;
+    if (!tr.ok()) {
+      const w = $('warn');
+      w.style.display = 'block';
+      w.textContent = 'Trình duyệt này không hỗ trợ Web Bluetooth. Dùng Chrome trên Android hoặc máy tính (iPhone/Safari không dùng được).';
+      return;
+    }
+    connecting = true;
+    if (quiet !== true) userOff = false;
+    try {
+      await openGatt();
+      say('');
+    } catch (e) {
+      dbg('connect lỗi: ' + ((e && (e.message || e.code)) || e));
+      connected = false; got = false;
+      setConn('', quiet === true ? 'Đang tìm hub...' : 'Chưa kết nối');
+      if (quiet === true) { /* thử lại âm thầm */ }
+      else if (e && e.name === 'NotFoundError') say('Không chọn thiết bị. Kiểm tra hub đã bật Bluetooth chưa.');
+      else say('Không kết nối được: ' + ((e && e.message) || e), 8000);
+    } finally { connecting = false; }
+    if (!connected) scheduleReconnect(6000);
+  }
+  function disconnect() { userOff = true; clearTimeout(rcTimer); tr.close(); }
+  $('btnConn').addEventListener('click', () => { dbg('chạm nút Kết nối (connected=' + connected + ')'); if (connected) disconnect(); else connect(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && !connected && !connecting) scheduleReconnect(500); });
+
+  // ---- cập nhật: giao diện (OTA, không cần cài lại) và báo APK mới ----
+  const UI_VER = +((document.querySelector('meta[name="ui-version"]') || {}).content || 0);
+  let nativeBuild = 0;
+  const updMsg = (t) => { $('updMsg').textContent = t || ''; };
+  const markUpd = (on) => $('bdSet').parentNode.classList.toggle('has', !!on);
+  async function fetchT(url, ms) {
+    const ac = new AbortController(); const tm = setTimeout(() => ac.abort(), ms || 10000);
+    try { return await fetch(url, { cache: 'no-store', signal: ac.signal }); } finally { clearTimeout(tm); }
+  }
+  async function checkUpdate(manual) {
+    const repo = $('repo').value.trim();
+    if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) { if (manual) updMsg('Nhập tên kho GitHub dạng tên/kho.'); return; }
+    store.set('repo', repo);
+    if (manual) updMsg('Đang kiểm tra...');
+    let msgs = [], any = false;
+    try {                                                                 // 1) giao diện
+      const r = await fetchT('https://raw.githubusercontent.com/' + repo + '/main/www/app.html?t=' + Date.now(), 12000);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const t = await r.text();
+      const m = /<meta name="ui-version" content="(\d+)"/.exec(t);
+      if (m && t.includes('</html>') && +m[1] > Math.max(UI_VER, +store.get('ui_ver') || 0)) {
+        store.set('ui_html', t); store.set('ui_ver', m[1]); store.set('ui_tries', '0');
+        msgs.push('Đã tải giao diện mới v' + m[1] + '.'); $('btnApply').style.display = ''; any = true;
+      } else if (m && +m[1] > UI_VER) { $('btnApply').style.display = ''; msgs.push('Giao diện v' + m[1] + ' đã tải, bấm Áp dụng.'); any = true; }
+      else msgs.push('Giao diện đang là bản mới nhất (v' + UI_VER + ').');
+    } catch (e) { msgs.push('Không kiểm tra được giao diện (' + ((e && e.message) || e) + ').'); }
+    try {                                                                 // 2) APK mới
+      const r = await fetchT('https://api.github.com/repos/' + repo + '/releases/latest', 12000);
+      if (r.ok) {
+        const j = await r.json();
+        const n = parseInt(String(j.tag_name || '').replace(/\D/g, ''), 10) || 0;
+        const a = (j.assets || []).find((x) => /\.apk$/i.test(x.name));
+        if (NATIVE && a && n > nativeBuild) {
+          const b = $('btnApk'); b.style.display = ''; b.dataset.url = a.browser_download_url;
+          msgs.push('Có APK mới (build ' + n + ', đang dùng ' + nativeBuild + ').'); any = true;
+        }
+      }
+    } catch (e) { /* không có release thì bỏ qua */ }
+    updMsg(msgs.join(' ')); markUpd(any);
+  }
+  $('btnUpd').addEventListener('click', () => checkUpdate(true));
+  $('btnApply').addEventListener('click', () => { location.reload(); });
+  $('btnApk').addEventListener('click', () => {
+    const u = $('btnApk').dataset.url; if (!u) return;
+    try { CAP.registerPlugin('Browser').open({ url: u }); } catch (e) { window.open(u, '_blank'); }
+  });
+  $('btnUiReset').addEventListener('click', () => {
+    store.set('ui_html', ''); store.set('ui_ver', '0'); store.set('ui_tries', '0');
+    updMsg('Đã xóa giao diện tải thêm. Đang mở lại bản gốc...'); setTimeout(() => location.reload(), 600);
+  });
+  $('btnForget').addEventListener('click', () => {
+    if (connected && !window.confirm('Ngắt kết nối và chọn lại hub khác?')) return;
+    userOff = true; clearTimeout(rcTimer); if (connected) tr.close();
+    tr.forget(); setConn('', 'Chưa kết nối'); say('Đã quên hub. Bấm Kết nối để chọn hub.');
+  });
+  $('repo').value = store.get('repo');
+  $('verTxt').textContent = 'Giao diện v' + UI_VER + (NATIVE ? ' · App build ' + nativeBuild : ' · chạy trên trình duyệt');
+  if (!NATIVE) $('updBox').style.display = 'none';
+  (async () => {
+    if (!NATIVE) return;
+    try { nativeBuild = parseInt((await CAP.registerPlugin('App').getInfo()).build, 10) || 0; } catch (e) {}
+    $('verTxt').textContent = 'Giao diện v' + UI_VER + ' · App build ' + nativeBuild;
+    if (store.get('repo')) checkUpdate(false);
+  })();
+
+  $('pin').value = store.get('pin');
+  render();
+  store.set('ui_tries', '0');                                     // giao diện chạy được: bỏ đếm lỗi khởi động
+  if (NATIVE && natTr.id) connect(true);                          // app: tự nối lại hub đã lưu
+})();
+</script>
+</body>
+</html>
