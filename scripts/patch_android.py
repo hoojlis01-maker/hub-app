@@ -30,21 +30,26 @@ g += '''
 // ---- thêm bởi scripts/patch_android.py ----
 android {
     defaultConfig {
-        versionCode (System.getenv('VERSION_CODE') ?: '1').toInteger()
-        versionName "1.0." + (System.getenv('VERSION_CODE') ?: '1')
+        versionCode = (System.getenv('VERSION_CODE') ?: '1').toInteger()
+        versionName = '1.0.' + (System.getenv('VERSION_CODE') ?: '1')
     }
     signingConfigs {
         release {
-            storeFile file(System.getenv('KS_PATH'))
-            storePassword 'hubcontrol'
-            keyAlias 'hub'
-            keyPassword 'hubcontrol'
+            storeFile = file(System.getenv('KS_PATH'))
+            storePassword = 'hubcontrol'
+            keyAlias = 'hub'
+            keyPassword = 'hubcontrol'
         }
     }
     buildTypes {
-        release { signingConfig signingConfigs.release }
+        release {
+            signingConfig = signingConfigs.release
+        }
     }
-    lint { abortOnError false; checkReleaseBuilds false }
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
+    }
 }
 '''
 gr.write_text(g, encoding='utf-8')
