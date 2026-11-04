@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1020">
-<meta name="ui-version" content="1">
+<meta name="ui-version" content="2">
 <title>Trung tâm điều khiển thông minh</title>
 <style>
   :root {
@@ -149,6 +149,8 @@
     background: var(--err); color: #fff; font-size: 10px; line-height: 16px; display: none; }
   .tabs button.has .bd { display: block; }
   #repo { letter-spacing: 0; }
+  #dbg { display: none; position: fixed; left: 8px; right: 8px; bottom: calc(78px + env(safe-area-inset-bottom)); max-height: 30vh; overflow: auto;
+    z-index: 20; background: #000d; color: #9fffb0; font: 11px/1.35 ui-monospace, monospace; padding: 6px 8px; border-radius: 8px; white-space: pre-wrap; }
   .sethead { margin: 4px 0 10px; font-size: 18px; font-weight: 800; }
   .box { padding: 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); margin-bottom: 12px; }
   .box h4 { margin: 0 0 6px; font-size: 14px; }
@@ -157,6 +159,17 @@
 </style>
 </head>
 <body>
+<div id="dbg" onclick="this.style.display='none'"></div>
+<script>
+// Nhật ký lỗi hiện trên màn hình (bản thử nghiệm app). Chạm vào khung để ẩn.
+window.__dbg = function (t) {
+  try { var d = new Date(), e = document.getElementById('dbg');
+    e.textContent += ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2) + ' ' + t + '\n';
+    e.style.display = 'block'; e.scrollTop = e.scrollHeight; } catch (x) {}
+};
+window.addEventListener('error', function (e) { window.__dbg('LOI: ' + e.message + ' (dong ' + (e.lineno || '?') + ')'); });
+window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI hua: ' + ((e.reason && e.reason.message) || e.reason)); });
+</script>
 <main>
   <h1>Trung tâm điều khiển thông minh</h1>
   <p class="sub">Xem màn hình chính, điều khiển hub và các kênh GPIO của board ESP phụ qua Bluetooth</p>
@@ -638,7 +651,14 @@
   // ---- lớp Bluetooth: Chrome (Web Bluetooth) hoặc app Android (plugin BluetoothLe) ----
   const CAP = window.Capacitor;
   const NATIVE = !!(CAP && CAP.isNativePlatform && CAP.isNativePlatform());
-  const BLE = NATIVE ? CAP.registerPlugin('BluetoothLe') : null;
+  const dbg = (t) => { try { window.__dbg(t); } catch (e) {} };
+  const withTO = (p, ms, name) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(name + ' không phản hồi sau ' + (ms / 1000) + 's')), ms))]);
+  let BLE = null;
+  try { BLE = NATIVE ? CAP.registerPlugin('BluetoothLe') : null; } catch (e) { dbg('registerPlugin lỗi: ' + (e.message || e)); }
+  if (NATIVE) {
+    let pl = ''; try { pl = Object.keys(CAP.Plugins || {}).join(','); } catch (e) {}
+    dbg('app v' + ((document.querySelector('meta[name="ui-version"]') || {}).content) + ' nền=' + (CAP.getPlatform ? CAP.getPlatform() : '?') + ' BLE=' + (BLE ? 'có' : 'KHÔNG') + ' plugins=' + pl);
+  } else dbg('chạy trên trình duyệt (không phải app)');
   const hex = (u8) => Array.from(u8, (b) => b.toString(16).padStart(2, '0')).join('');
   const unhex = (h) => { const a = new Uint8Array(((h || '').length / 2) | 0); for (let k = 0; k < a.length; k++) a[k] = parseInt(h.substr(k * 2, 2), 16); return a; };
   const hexTxt = (h) => dec.decode(unhex(h));
@@ -672,15 +692,21 @@
     ok: () => !!BLE,
     async clearSubs() { const a = this.subs; this.subs = []; for (const h of a) { try { await h.remove(); } catch (e) {} } },
     async open(onLost) {
-      await BLE.initialize({ androidNeverForLocation: true });
+      dbg('initialize...');
+      await withTO(BLE.initialize({ androidNeverForLocation: true }), 25000, 'initialize');
+      dbg('initialize xong');
       if (!this.id) {                                             // lần đầu: chọn hub, các lần sau tự nối lại
-        const d = await BLE.requestDevice({ services: [SVC] });
+        dbg('requestDevice...');
+        const d = await withTO(BLE.requestDevice({ services: [SVC] }), 90000, 'requestDevice');
+        dbg('đã chọn ' + (d.name || '') + ' ' + d.deviceId);
         this.id = d.deviceId; this.name = d.name || 'ESP32';
         store.set('bleId', this.id); store.set('bleName', this.name);
       }
       await this.clearSubs();
       this.subs.push(await BLE.addListener('disconnected|' + this.id, () => onLost && onLost()));
-      await BLE.connect({ deviceId: this.id, timeout: 10000 });
+      dbg('connect ' + this.id);
+      await withTO(BLE.connect({ deviceId: this.id, timeout: 10000 }), 20000, 'connect');
+      dbg('connect xong');
     },
     async read(u) { return hexTxt((await BLE.read({ deviceId: this.id, service: SVC, characteristic: u })).value); },
     async notify(u, cb) {
@@ -739,6 +765,7 @@
   }
 
   async function connect(quiet) {
+    dbg('connect() quiet=' + quiet + ' connecting=' + connecting);
     if (connecting) return;
     if (!tr.ok()) {
       const w = $('warn');
@@ -752,6 +779,7 @@
       await openGatt();
       say('');
     } catch (e) {
+      dbg('connect lỗi: ' + ((e && (e.message || e.code)) || e));
       connected = false; got = false;
       setConn('', quiet === true ? 'Đang tìm hub...' : 'Chưa kết nối');
       if (quiet === true) { /* thử lại âm thầm */ }
@@ -761,7 +789,7 @@
     if (!connected) scheduleReconnect(6000);
   }
   function disconnect() { userOff = true; clearTimeout(rcTimer); tr.close(); }
-  $('btnConn').addEventListener('click', () => (connected ? disconnect() : connect()));
+  $('btnConn').addEventListener('click', () => { dbg('chạm nút Kết nối (connected=' + connected + ')'); if (connected) disconnect(); else connect(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden && !connected && !connecting) scheduleReconnect(500); });
 
   // ---- cập nhật: giao diện (OTA, không cần cài lại) và báo APK mới ----

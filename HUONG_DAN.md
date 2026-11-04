@@ -25,3 +25,7 @@ Nếu bước 3 báo lỗi đỏ: mở lần chạy đó, chép dòng lỗi gử
 - Giao diện tải thêm bị lỗi 2 lần liền sẽ tự bỏ và quay về bản gốc trong app. Hoặc: Cài đặt → **Về giao diện gốc của app**.
 - Muốn đổi sang hub khác: Cài đặt → **Chọn lại hub**.
 - File `hub-release.keystore` là khóa ký APK. Giữ nguyên, đừng xóa, nếu không cài đè bản mới sẽ bị Android từ chối.
+
+## D. Lưu ý khi dùng GitHub bằng Cốc Cốc
+- Tắt tính năng tự dịch trang khi xem code (bấm biểu tượng dịch trên thanh địa chỉ → Tắt dịch). Dịch tự động làm chữ trong code hiển thị sai, nhưng không đổi file thật.
+- Khi tải file lên, kéo cả thư mục `www` và `scripts` vào trang `github.com/<tên>/hub-app/upload/main` để file nằm đúng thư mục.
