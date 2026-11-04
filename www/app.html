@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1020">
-<meta name="ui-version" content="6">
+<meta name="ui-version" content="7">
 <title>Trung tâm điều khiển thông minh</title>
 <style>
   :root {
@@ -669,7 +669,7 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
     dbg('app v' + ((document.querySelector('meta[name="ui-version"]') || {}).content) + ' nền=' + (CAP.getPlatform ? CAP.getPlatform() : '?') + ' BLE=' + (BLE ? 'có' : 'KHÔNG') + ' plugins=' + pl);
   } else dbg('chạy trên trình duyệt (không phải app)');
   const hex = (u8) => Array.from(u8, (b) => b.toString(16).padStart(2, '0')).join('');
-  const unhex = (h) => { const a = new Uint8Array(((h || '').length / 2) | 0); for (let k = 0; k < a.length; k++) a[k] = parseInt(h.substr(k * 2, 2), 16); return a; };
+  const unhex = (h) => { h = String(h || '').replace(/[^0-9a-fA-F]/g, ''); const a = new Uint8Array((h.length / 2) | 0); for (let k = 0; k < a.length; k++) a[k] = parseInt(h.substr(k * 2, 2), 16); return a; };
   const hexTxt = (h) => dec.decode(unhex(h));
 
   const webTr = {
@@ -719,10 +719,10 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
     },
     async read(u) { return hexTxt((await BLE.read({ deviceId: this.id, service: SVC, characteristic: u })).value); },
     async notify(u, cb) {
-      this.subs.push(await BLE.addListener('notification|' + this.id + '|' + SVC + '|' + u, (ev) => cb(hexTxt(ev.value))));
+      this.subs.push(await BLE.addListener('notification|' + this.id + '|' + SVC + '|' + u, (ev) => { if (!this.rawLogged) { this.rawLogged = true; dbg('mẫu dữ liệu thô: "' + ev.value + '"'); } cb(hexTxt(ev.value)); }));
       await BLE.startNotifications({ deviceId: this.id, service: SVC, characteristic: u });
     },
-    async write(bytes) { dbg('gửi ' + bytes.length + ' byte: ' + hex(bytes) + ' = "' + dec.decode(bytes).replace(/^\d+:/, '***:') + '"'); await BLE.write({ deviceId: this.id, service: SVC, characteristic: CMD, value: hex(bytes) }); dbg('gửi xong'); },
+    async write(bytes) { dbg('gửi ' + bytes.length + ' byte: ' + hex(bytes) + ' = "' + dec.decode(bytes).replace(/^\d+:/, '***:') + '"'); await BLE.write({ deviceId: this.id, service: SVC, characteristic: CMD, value: Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join(' ') }); dbg('gửi xong'); },
     close() { const id = this.id; BLE.disconnect({ deviceId: id }).catch(() => {}).then(() => onLost()); },
     forget() { this.id = ''; this.name = ''; store.set('bleId', ''); store.set('bleName', ''); },
   };
