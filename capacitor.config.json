@@ -1,0 +1,7 @@
+{
+  "appId": "vn.hooj.hubcontrol",
+  "appName": "Điều khiển Hub",
+  "webDir": "www",
+  "backgroundColor": "#0b1020",
+  "server": { "androidScheme": "https" }
+}

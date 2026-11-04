@@ -1,0 +1,14 @@
+{
+  "name": "hub-control",
+  "version": "1.0.0",
+  "private": true,
+  "description": "App Android điều khiển hub ESP32 qua Bluetooth",
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/app": "^6.0.0",
+    "@capacitor/browser": "^6.0.0",
+    "@capacitor/cli": "^6.2.0",
+    "@capacitor/core": "^6.2.0",
+    "@capacitor-community/bluetooth-le": "^6.0.0"
+  }
+}
