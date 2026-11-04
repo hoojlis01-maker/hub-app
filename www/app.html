@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1020">
-<meta name="ui-version" content="7">
+<meta name="ui-version" content="8">
 <title>Trung tâm điều khiển thông minh</title>
 <style>
   :root {
@@ -161,11 +161,12 @@
 <body>
 <div id="dbg" onclick="this.style.display='none'"></div>
 <script>
-// Nhật ký lỗi hiện trên màn hình (bản thử nghiệm app). Chạm vào khung để ẩn.
+// Nhật ký gỡ lỗi: mặc định ẩn, chỉ tự hiện khi có lỗi; xem lại ở Cài đặt. Chạm vào khung để ẩn.
 window.__dbg = function (t) {
   try { var d = new Date(), e = document.getElementById('dbg');
     e.textContent += ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2) + ' ' + t + '\n';
-    e.style.display = 'block'; e.scrollTop = e.scrollHeight; } catch (x) {}
+    if (String(t).indexOf('LOI') === 0) e.style.display = 'block';   // chỉ tự hiện khi có lỗi
+    e.scrollTop = e.scrollHeight; } catch (x) {}
 };
 window.addEventListener('error', function (e) { window.__dbg('LOI: ' + e.message + ' (dong ' + (e.lineno || '?') + ')'); });
 window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI hua: ' + ((e.reason && e.reason.message) || e.reason)); });
@@ -243,6 +244,7 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
     <div class="actions"><button id="btnUpd">Kiểm tra cập nhật</button></div>
     <div class="actions"><button id="btnApply" class="primary" style="display:none">Áp dụng giao diện mới</button></div>
     <div class="actions"><button id="btnApk" class="primary" style="display:none">Tải APK mới</button></div>
+    <div class="actions"><button id="btnLog">Xem nhật ký gỡ lỗi</button></div>
     <p id="updMsg"></p>
     <div class="actions"><button id="btnUiReset">Về giao diện gốc của app</button><button id="btnForget">Chọn lại hub</button></div>
   </div>
@@ -841,6 +843,7 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
     } catch (e) { /* không có release thì bỏ qua */ }
     updMsg(msgs.join(' ')); markUpd(any);
   }
+  $('btnLog').addEventListener('click', () => { const d = $('dbg'); d.style.display = d.style.display === 'block' ? 'none' : 'block'; d.scrollTop = d.scrollHeight; });
   $('btnUpd').addEventListener('click', () => checkUpdate(true));
   $('btnApply').addEventListener('click', () => { location.reload(); });
   $('btnApk').addEventListener('click', () => {
