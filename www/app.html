@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1020">
-<meta name="ui-version" content="2">
+<meta name="ui-version" content="4">
 <title>Trung tâm điều khiển thông minh</title>
 <style>
   :root {
@@ -171,7 +171,7 @@ window.addEventListener('error', function (e) { window.__dbg('LOI: ' + e.message
 window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI hua: ' + ((e.reason && e.reason.message) || e.reason)); });
 </script>
 <main>
-  <h1>Trung tâm điều khiển thông minh</h1>
+  <h1><img src="logo.png" alt="" onerror="this.style.display='none'" style="width:34px;height:34px;vertical-align:middle;margin-right:8px;border-radius:50%">Trung tâm điều khiển thông minh</h1>
   <p class="sub">Xem màn hình chính, điều khiển hub và các kênh GPIO của board ESP phụ qua Bluetooth</p>
 
   <div id="warn"></div>
@@ -653,8 +653,14 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
   const NATIVE = !!(CAP && CAP.isNativePlatform && CAP.isNativePlatform());
   const dbg = (t) => { try { window.__dbg(t); } catch (e) {} };
   const withTO = (p, ms, name) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(name + ' không phản hồi sau ' + (ms / 1000) + 's')), ms))]);
+  // Lấy plugin native: ưu tiên Capacitor.Plugins (có sẵn trong app), nếu không có thì thử registerPlugin
+  const plug = (name) => {
+    try { if (CAP && CAP.Plugins && CAP.Plugins[name]) return CAP.Plugins[name]; } catch (e) {}
+    try { if (CAP && typeof CAP.registerPlugin === 'function') return CAP.registerPlugin(name); } catch (e) { dbg('plugin ' + name + ' lỗi: ' + (e.message || e)); }
+    return null;
+  };
   let BLE = null;
-  try { BLE = NATIVE ? CAP.registerPlugin('BluetoothLe') : null; } catch (e) { dbg('registerPlugin lỗi: ' + (e.message || e)); }
+  try { BLE = NATIVE ? plug('BluetoothLe') : null; } catch (e) { dbg('BLE lỗi: ' + (e.message || e)); }
   if (NATIVE) {
     let pl = ''; try { pl = Object.keys(CAP.Plugins || {}).join(','); } catch (e) {}
     dbg('app v' + ((document.querySelector('meta[name="ui-version"]') || {}).content) + ' nền=' + (CAP.getPlatform ? CAP.getPlatform() : '?') + ' BLE=' + (BLE ? 'có' : 'KHÔNG') + ' plugins=' + pl);
@@ -836,7 +842,7 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
   $('btnApply').addEventListener('click', () => { location.reload(); });
   $('btnApk').addEventListener('click', () => {
     const u = $('btnApk').dataset.url; if (!u) return;
-    try { CAP.registerPlugin('Browser').open({ url: u }); } catch (e) { window.open(u, '_blank'); }
+    try { plug('Browser').open({ url: u }); } catch (e) { window.open(u, '_blank'); }
   });
   $('btnUiReset').addEventListener('click', () => {
     store.set('ui_html', ''); store.set('ui_ver', '0'); store.set('ui_tries', '0');
@@ -852,7 +858,7 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
   if (!NATIVE) $('updBox').style.display = 'none';
   (async () => {
     if (!NATIVE) return;
-    try { nativeBuild = parseInt((await CAP.registerPlugin('App').getInfo()).build, 10) || 0; } catch (e) {}
+    try { nativeBuild = parseInt((await plug('App').getInfo()).build, 10) || 0; } catch (e) {}
     $('verTxt').textContent = 'Giao diện v' + UI_VER + ' · App build ' + nativeBuild;
     if (store.get('repo')) checkUpdate(false);
   })();

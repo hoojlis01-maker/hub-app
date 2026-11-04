@@ -53,4 +53,18 @@ android {
 }
 '''
 gr.write_text(g, encoding='utf-8')
+
+# ---- biểu tượng app (logo Hooj-Lis) ----
+import shutil
+src = pathlib.Path('resources/res')
+dst = root / 'src/main/res'
+if src.exists():
+    for f in src.rglob('*.png'):
+        t2 = dst / f.relative_to(src)
+        t2.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(f, t2)
+    bg = dst / 'values/ic_launcher_background.xml'
+    bg.parent.mkdir(parents=True, exist_ok=True)
+    bg.write_text('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#0A1330</color>\n</resources>\n', encoding='utf-8')
+    print('icon OK')
 print('patch OK')
