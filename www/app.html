@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1020">
-<meta name="ui-version" content="10">
+<meta name="ui-version" content="11">
 <title>Trung tâm điều khiển thông minh</title>
 <style>
   :root {
@@ -14,9 +14,10 @@
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; background: var(--bg); color: var(--text);
-    font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    font: 16px/1.4 sans-serif; font-style: normal; -webkit-text-size-adjust: 100%; }   /* sans-serif = phông mặc định của điện thoại */
+  button, input, select, textarea { font-family: inherit; font-style: normal; }
   main { max-width: 520px; margin: 0 auto; padding: 16px; padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
-  h1 { font-size: 20px; margin: 4px 0 2px; }
+  h1 { font-size: 17px; margin: 4px 0 2px; font-weight: 700; letter-spacing: -.2px; }
   .sub { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
 
   .bar { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
@@ -156,6 +157,22 @@
   .box h4 { margin: 0 0 6px; font-size: 14px; }
   .box p { margin: 4px 0; font-size: 13px; color: var(--muted); }
   .foot { margin-top: 18px; color: var(--muted); font-size: 12px; }
+
+  /* ===== Nền & thẻ kiểu kính mờ (v11) ===== */
+  :root { --card: rgba(24, 34, 68, .62); --card-hi: rgba(40, 56, 108, .72); --line: rgba(120, 140, 220, .22); }
+  html { background: #070b18; }
+  body { min-height: 100vh; background:
+      radial-gradient(900px 520px at 12% -8%, rgba(60, 110, 255, .28), transparent 60%),
+      radial-gradient(760px 480px at 105% 18%, rgba(150, 70, 255, .22), transparent 58%),
+      radial-gradient(700px 520px at 40% 110%, rgba(0, 200, 170, .14), transparent 60%),
+      linear-gradient(180deg, #0a1124 0%, #080d1d 100%); background-attachment: fixed; }
+  .pill, .link, .card, .home, .home .tile, .home .chip, .box, .pump {
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+  .home { background: linear-gradient(160deg, rgba(34, 52, 112, .62) 0%, rgba(16, 24, 58, .62) 100%); border-color: rgba(130, 150, 230, .28); }
+  .home .tile, .home .chip { background: rgba(10, 16, 40, .45); border-color: rgba(120, 140, 220, .2); }
+  .card.on { background: rgba(15, 60, 44, .62); }
+  .card.wait { background: rgba(60, 48, 8, .6); }
+  .card.err { background: rgba(70, 22, 36, .66); }
 </style>
 </head>
 <body>
