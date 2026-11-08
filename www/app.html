@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1020">
-<meta name="ui-version" content="13">
+<meta name="ui-version" content="15">
 <title>Trung tâm điều khiển thông minh</title>
 <style>
   :root {
@@ -123,6 +123,14 @@
   .home .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
   .home .chip { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; font-size: 13px;
     background: #0e1530; border: 1px solid var(--line); }
+  .home .mods { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .home .mod { text-align: left; padding: 10px 12px; border-radius: 14px; border: 1px solid rgba(120,140,220,.2); background: rgba(10,16,40,.45); color: inherit; font: inherit; cursor: pointer; }
+  .home .mod b { display: block; font-size: 13px; opacity: .8; font-weight: 700; }
+  .home .mod .mv { font-size: 22px; font-weight: 800; margin-top: 2px; }
+  .home .mod small { display: block; font-size: 12px; opacity: .75; margin-top: 2px; }
+  .home .mod.g { border-color: var(--on); }
+  .home .mod.g .mv { color: var(--on); }
+  .home .mod.y { border-color: var(--warn); }
   .home .chip i { width: 9px; height: 9px; border-radius: 50%; background: var(--off); flex: none; }
   .home .chip.g i { background: var(--on); box-shadow: 0 0 6px var(--on); }
   .home .chip.y i { background: var(--warn); }
@@ -211,6 +219,10 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
       <div class="tile"><h3>Ngoài trời</h3>
         <div class="wx"><span class="ic" id="hIc">·</span><div><div class="big t" id="hTout">--.-°C</div><div class="hum" id="hHout">--%</div></div></div>
         <div class="wxt" id="hWx">Chưa có dữ liệu</div><div class="wxs" id="hWxs"></div></div>
+    </div>
+    <div class="mods">
+      <button type="button" class="mod" id="mN1" data-go="esp"><b>NODE 1 · 11 KÊNH</b><div class="mv" id="mN1v">--</div><small id="mN1s">Chưa kết nối</small></button>
+      <button type="button" class="mod" id="mN2" data-go="mod2"><b>MODULE 2 · 4 RƠ LE</b><div class="mv" id="mN2v">--</div><small id="mN2s">Chưa kết nối</small></button>
     </div>
     <div class="chips">
       <div class="chip" id="cBat"><span class="bat" id="batIc"><b id="batFill"></b></span><span id="batTxt">Pin --%</span></div>
@@ -511,6 +523,9 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
       : (!got ? 'Đang đọc trạng thái...' : (linked ? 'Hub đã nối Node 1 (GPIO-NODE1)' : 'Hub đang tìm Node 1...'));
     $('cnt').textContent = connected && got && linked ? on + '/' + n + ' BẬT' : '';
     $('btnAllOff').disabled = !(connected && got && linked);
+    { const ok1 = connected && got && linked; $('mN1').className = 'mod' + (!connected || !got ? '' : (ok1 ? ' g' : ' y'));
+      $('mN1v').textContent = ok1 ? on + '/' + n + ' BẬT' : '--';
+      $('mN1s').textContent = !connected ? 'Chưa kết nối hub' : (!got ? 'Đang đọc...' : (ok1 ? 'Đã nối GPIO-NODE1' : 'Đang tìm Node 1...')); }
     $('bdEsp').parentNode.classList.toggle('has', connected && got && !linked);
     renderHome();
     renderM2();
@@ -548,6 +563,9 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
       : (!m2got ? 'Hub chưa gửi trạng thái Module 2 (cần firmware v23.9 trở lên)' : (m2linked ? 'Hub đã nối Module 2 (GPIO-NODE2)' : 'Hub đang tìm Module 2...'));
     $('cnt2').textContent = ok ? on + '/' + M2CH + ' BẬT' : '';
     $('btnAllOff2').disabled = !ok;
+    $('mN2').className = 'mod' + (!connected || !m2got ? '' : (ok ? ' g' : ' y'));
+    $('mN2v').textContent = ok ? on + '/' + M2CH + ' BẬT' : '--';
+    $('mN2s').textContent = !connected ? 'Chưa kết nối hub' : (!m2got ? 'Hub chưa gửi (cần v23.9)' : (ok ? 'Đã nối GPIO-NODE2' : 'Đang tìm Module 2...'));
     $('bdM2').parentNode.classList.toggle('has', connected && m2got && !m2linked);
     chip('cMod2', !connected || !m2got ? '' : (m2linked ? 'g' : 'y'), !connected || !m2got ? 'Module 2' : (m2linked ? 'Module 2: đã nối' : 'Module 2: chưa nối'), 'mod2Txt');
   }
@@ -647,7 +665,8 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
       chip('cWifi', y.wifi === 2 ? 'g' : (y.wifi === 1 ? 'y' : 'r'), y.wifi === 2 ? 'WiFi: đã nối' : (y.wifi === 1 ? 'WiFi: đang nối' : 'WiFi: mất'), 'wifiTxt');
       chip('cNet', y.net ? 'g' : '', y.net ? 'Có internet' : 'Chưa có internet', 'netTxt');
       chip('cNode', y.node ? 'g' : 'y', y.node ? 'Node 1: đã nối' : 'Node 1: chưa nối', 'nodeTxt');
-      chip('cHw', y.led === 2 ? 'g' : (y.led === 1 ? 'y' : 'r'), y.led === 2 ? 'Phần cứng: đang chạy' : (y.led === 1 ? 'Phần cứng: bình thường' : 'Phần cứng: có lỗi'), 'hwTxt');
+      const HWERR = ['', 'mất tín hiệu cảm biến', 'AUTO đã dừng', 'lỗi chưa xác nhận', 'module còn lỗi', 'lỗi phần cứng'];
+      chip('cHw', y.led === 2 ? 'g' : (y.led === 1 ? 'y' : 'r'), y.led === 2 ? 'Phần cứng: đang chạy' : (y.led === 1 ? (y.err ? 'Phần cứng: ' + HWERR[y.err] : 'Phần cứng: bình thường') : 'Phần cứng: ' + (HWERR[y.err] || 'có lỗi')), 'hwTxt');
     } else {
       $('batIc').className = 'bat'; $('batFill').style.width = '0'; $('batTxt').textContent = 'Pin --%';
       chip('cWifi', '', 'WiFi', 'wifiTxt'); chip('cNet', '', 'Internet', 'netTxt'); chip('cNode', '', 'Node 1', 'nodeTxt'); chip('cHw', '', 'Phần cứng', 'hwTxt');
@@ -661,9 +680,9 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
       home.t = { hh: m[1], mm: m[2], ss: m[3], dd: m[4], mo: m[5], yy: m[6], w: parseInt(m[7], 10), ld: m[8], lm: m[9] };
     } else if ((m = /^M([+-]\d{3}|----)(\d{3}|---)([+-]\d{3}|----)(\d{3}|---)(\d{2}|--)([01])$/.exec(text))) {
       home.m = { tin: tNum(m[1]), hin: iNum(m[2]), tout: tNum(m[3]), hout: iNum(m[4]), wc: iNum(m[5]), day: m[6] === '1' };
-    } else if ((m = /^Y(\d{3})([01])(\d{3})([012])([01])([01])(\d{3}|---)(\d{3}|---)([012])$/.exec(text))) {
+    } else if ((m = /^Y(\d{3})([01])(\d{3})([012])([01])([01])(\d{3}|---)(\d{3}|---)([012])([0-5])?$/.exec(text))) {
       home.y = { bat: parseInt(m[1], 10), chg: m[2] === '1', vin: parseInt(m[3], 10), wifi: parseInt(m[4], 10), net: m[5] === '1', node: m[6] === '1',
-                 rain: iNum(m[7]), wind: iNum(m[8]), led: parseInt(m[9], 10) };
+                 rain: iNum(m[7]), wind: iNum(m[8]), led: parseInt(m[9], 10), err: m[10] ? parseInt(m[10], 10) : 0 };
     } else if (text[0] === 'L') { home.loc1 = text.slice(1); }
     else if (text[0] === 'l') { home.loc2 = text.slice(1); }
     else return;
@@ -759,6 +778,7 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
     try { localStorage.setItem('tab', t); } catch (e) {}
     window.scrollTo(0, 0);
   }
+  document.querySelectorAll('.home .mod').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.go)));
   document.getElementById('tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) showTab(b.dataset.t); });
   try { const t = localStorage.getItem('tab'); if (t && document.querySelector('.tabpane[data-tab="' + t + '"]')) showTab(t); } catch (e) {}
   document.getElementById('btnDisc').addEventListener('click', () => disconnect());
