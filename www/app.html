@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1020">
-<meta name="ui-version" content="11">
+<meta name="ui-version" content="13">
 <title>Trung tâm điều khiển thông minh</title>
 <style>
   :root {
@@ -190,7 +190,7 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
 </script>
 <main>
   <h1><img src="logo.png" alt="" onerror="this.style.display='none'" style="width:34px;height:34px;vertical-align:middle;margin-right:8px;border-radius:50%">Trung tâm điều khiển thông minh</h1>
-  <p class="sub">Xem màn hình chính, điều khiển hub và các kênh GPIO của board ESP phụ qua Bluetooth</p>
+  <p class="sub">Xem màn hình chính, điều khiển hub, Node 1 và Module 2 qua Bluetooth</p>
 
   <div id="warn"></div>
 
@@ -216,7 +216,8 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
       <div class="chip" id="cBat"><span class="bat" id="batIc"><b id="batFill"></b></span><span id="batTxt">Pin --%</span></div>
       <div class="chip" id="cWifi"><i></i><span id="wifiTxt">WiFi</span></div>
       <div class="chip" id="cNet"><i></i><span id="netTxt">Internet</span></div>
-      <div class="chip" id="cNode"><i></i><span id="nodeTxt">ESP phụ</span></div>
+      <div class="chip" id="cNode"><i></i><span id="nodeTxt">Node 1</span></div>
+      <div class="chip" id="cMod2"><i></i><span id="mod2Txt">Module 2</span></div>
       <div class="chip" id="cHw"><i></i><span id="hwTxt">Phần cứng</span></div>
     </div>
   </div>
@@ -228,15 +229,25 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
   </section>
 
   <section class="tabpane" data-tab="esp">
-  <div class="sethead">Kênh ESP phụ</div>
+  <div class="sethead">Node 1 · kênh GPIO</div>
   <div class="link" id="link"><i class="dot"></i><span id="linkText">Chưa kết nối với hub</span><span class="cnt" id="cnt"></span></div>
 
   <div class="grid" id="grid"></div>
 
   <div class="actions">
-    <button id="btnAllOff" class="danger" disabled>Tắt tất cả ESP phụ</button>
+    <button id="btnAllOff" class="danger" disabled>Tắt tất cả Node 1</button>
     <button id="btnReset" disabled>RESET lỗi</button>
     <button id="btnEdit">Đặt tên kênh</button>
+  </div>
+  </section>
+
+  <section class="tabpane" data-tab="mod2">
+  <div class="sethead">Module 2 · 4 rơ le</div>
+  <div class="link" id="link2"><i class="dot"></i><span id="link2Text">Chưa kết nối với hub</span><span class="cnt" id="cnt2"></span></div>
+  <div class="grid" id="grid2"></div>
+  <div class="actions">
+    <button id="btnAllOff2" class="danger" disabled>Tắt tất cả Module 2</button>
+    <button id="btnEdit2">Đặt tên kênh</button>
   </div>
   </section>
 
@@ -273,7 +284,8 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
 <div class="tabs"><nav id="tabs">
   <button data-t="home" class="act"><span class="ti">🏠</span>Màn chính</button>
   <button data-t="dev"><span class="ti">💡</span>Thiết bị</button>
-  <button data-t="esp"><span class="ti">🔌</span>ESP phụ<span class="bd" id="bdEsp">!</span></button>
+  <button data-t="esp"><span class="ti">🔌</span>Node 1<span class="bd" id="bdEsp">!</span></button>
+  <button data-t="mod2"><span class="ti">🔆</span>Module 2<span class="bd" id="bdM2">!</span></button>
   <button data-t="set"><span class="ti">⚙️</span>Cài đặt<span class="bd" id="bdSet">!</span></button>
 </nav></div>
 
@@ -286,16 +298,19 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
   // thông tin màn hình chính của hub (bản firmware mới có gửi màn chính): T giờ ngày | M nhiệt ẩm thời tiết | Y hệ thống | L, l địa điểm (2 phần)
   const INFO = ['6e400107', '6e400108', '6e400109', '6e40010a', '6e40010b'].map((p) => p + '-b5a3-f393-e0a9-e50e24dcca9e');
   const MAXCH = 16;
+  const MOD2 = '6e40010c-b5a3-f393-e0a9-e50e24dcca9e';   // trạng thái MODULE 2 (hub v23.9 trở lên): "F" + muốn + thực + nối
+  const M2CH = 4;
 
   const RESULT = {
     BADPIN: 'Sai mã PIN.',
     BADCMD: 'Lệnh không hợp lệ.',
-    NOLINK: 'Hub chưa nối được ESP phụ, chưa điều khiển được.',
+    NOLINK: 'Hub chưa nối được Node 1 (hoặc Module 2), chưa điều khiển được.',
     AUTOLK: 'Thiết bị đang do chế độ TỰ ĐỘNG quản lý. Tắt TỰ ĐỘNG trước.',
     LOCKED: 'Thiết bị đang bị khóa do lỗi. Bấm RESET lỗi.',
     BUSY: 'Thiết bị đang xử lý, thử lại sau ít giây.',
     DRYWAIT: 'Máy sấy đang trong thời gian khóa an toàn, chưa bật lại được.',
     NOAUTO: 'Chưa chọn thiết bị nào cho TỰ ĐỘNG. Chọn trên màn hình hub trước.',
+    AUTOLK2: 'Kênh này đang do TỰ ĐỘNG điều khiển. Tắt TỰ ĐỘNG trước.',
   };
 
   const $ = (id) => document.getElementById(id);
@@ -312,6 +327,7 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
     { key: 'BL',   idx: 4, name: 'Đèn nền', ctl: false, hint: 'Tự động theo ánh sáng' },
     { key: 'NET',  idx: 7, name: 'Trực tuyến', ctl: false, hint: 'Hub có internet' },
   ];
+  let m2want = 0, m2have = 0, m2linked = false, m2got = false, m2editing = false;
   let queue = Promise.resolve();
   let msgTimer = 0;
   let editing = false;
@@ -324,6 +340,9 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
   let names = {};
   try { names = JSON.parse(store.get('names') || '{}') || {}; } catch (e) { names = {}; }
   const DEFAULT = { 0: 'Đèn 2', 1: 'Quạt', 2: 'Máy sấy', 3: 'Máy bơm' };   // R1..R3 gắn sẵn thiết bị trên hub
+  let m2names = {};
+  try { m2names = JSON.parse(store.get('m2names') || '{}') || {}; } catch (e) { m2names = {}; }
+  const m2NameOf = (i) => (m2names[i] && String(m2names[i]).trim()) || ('Kênh ' + (i + 1));
   const nameOf = (i) => (names[i] && String(names[i]).trim()) || DEFAULT[i] || ('R' + (i + 1));
 
   function say(t, ms = 5000) {
@@ -489,12 +508,84 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
     const lk = $('link');
     lk.className = 'link' + (!connected ? '' : (linked ? ' ok' : ' wait'));
     $('linkText').textContent = !connected ? 'Chưa kết nối với hub'
-      : (!got ? 'Đang đọc trạng thái...' : (linked ? 'Hub đã nối ESP phụ (GPIO-NODE1)' : 'Hub đang tìm ESP phụ...'));
+      : (!got ? 'Đang đọc trạng thái...' : (linked ? 'Hub đã nối Node 1 (GPIO-NODE1)' : 'Hub đang tìm Node 1...'));
     $('cnt').textContent = connected && got && linked ? on + '/' + n + ' BẬT' : '';
     $('btnAllOff').disabled = !(connected && got && linked);
     $('bdEsp').parentNode.classList.toggle('has', connected && got && !linked);
     renderHome();
+    renderM2();
   }
+
+  // ---- MODULE 2 (4 rơ le): bật/tắt từng kênh ----
+  const grid2 = $('grid2');
+  const cards2 = [];
+  for (let i = 0; i < M2CH; i++) {
+    const el = document.createElement('div');
+    el.className = 'card disc';
+    el.setAttribute('role', 'button'); el.tabIndex = 0;
+    el.innerHTML = '<div class="top"><span class="name"></span><span class="ch"></span></div><div class="state">—</div>';
+    el.addEventListener('click', () => (m2editing ? renameM2(i) : toggleM2(i)));
+    el.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === el) { e.preventDefault(); el.click(); } });
+    grid2.appendChild(el); cards2.push(el);
+  }
+  function renderM2() {
+    let on = 0;
+    cards2.forEach((el, i) => {
+      const w = bit(m2want, i), h = bit(m2have, i);
+      let cls = 'off', state = 'TẮT';
+      if (!connected || !m2got || !m2linked) { cls = 'disc'; state = '---'; }
+      else if (w !== h) { cls = 'wait'; state = '...'; }
+      else if (h) { cls = 'on'; state = 'BẬT'; on++; }
+      el.className = 'card ' + cls + (m2editing ? ' edit' : '');
+      el.querySelector('.name').textContent = m2NameOf(i);
+      el.querySelector('.ch').textContent = 'K' + (i + 1);
+      el.querySelector('.state').textContent = state;
+      el.setAttribute('aria-disabled', String(cls === 'disc'));
+    });
+    const lk = $('link2'), ok = connected && m2got && m2linked;
+    lk.className = 'link' + (!connected ? '' : (ok ? ' ok' : ' wait'));
+    $('link2Text').textContent = !connected ? 'Chưa kết nối với hub'
+      : (!m2got ? 'Hub chưa gửi trạng thái Module 2 (cần firmware v23.9 trở lên)' : (m2linked ? 'Hub đã nối Module 2 (GPIO-NODE2)' : 'Hub đang tìm Module 2...'));
+    $('cnt2').textContent = ok ? on + '/' + M2CH + ' BẬT' : '';
+    $('btnAllOff2').disabled = !ok;
+    $('bdM2').parentNode.classList.toggle('has', connected && m2got && !m2linked);
+    chip('cMod2', !connected || !m2got ? '' : (m2linked ? 'g' : 'y'), !connected || !m2got ? 'Module 2' : (m2linked ? 'Module 2: đã nối' : 'Module 2: chưa nối'), 'mod2Txt');
+  }
+  function onMod2(text) {
+    const m = /^F([0-9A-Fa-f])([0-9A-Fa-f])([01])/.exec(text);
+    if (!m) return;
+    m2want = parseInt(m[1], 16); m2have = parseInt(m[2], 16); m2linked = m[3] === '1'; m2got = true;
+    renderM2();
+  }
+  function toggleM2(i) {
+    if (!connected || !m2got) return;
+    if (!m2linked) { say('Hub chưa nối được Module 2, chưa điều khiển được.'); return; }
+    const isOn = bit(m2want, i) === 1;
+    m2want = isOn ? (m2want & ~(1 << i)) : (m2want | (1 << i));   // hiện "..." ngay, hub sẽ xác nhận lại
+    renderM2();
+    send('M' + (i + 1) + '=' + (isOn ? 0 : 1));
+  }
+  $('btnAllOff2').addEventListener('click', () => {
+    if (!connected || !m2linked) return;
+    if (!window.confirm('Tắt tất cả các kênh Module 2?')) return;
+    m2want = 0; renderM2();
+    send('MALL=0');
+  });
+  function renameM2(i) {
+    const v = window.prompt('Tên cho Kênh ' + (i + 1) + ' (để trống = tên mặc định)', m2names[i] || '');
+    if (v === null) return;
+    const t = v.trim().slice(0, 20);
+    if (t) m2names[i] = t; else delete m2names[i];
+    store.set('m2names', JSON.stringify(m2names));
+    renderM2();
+  }
+  $('btnEdit2').addEventListener('click', () => {
+    m2editing = !m2editing;
+    $('btnEdit2').textContent = m2editing ? 'Xong' : 'Đặt tên kênh';
+    $('btnEdit2').classList.toggle('primary', m2editing);
+    say(m2editing ? 'Chạm vào kênh để đặt tên.' : '');
+    renderM2();
+  });
 
   function setConn(kind, text) {
     pill.className = 'pill' + (kind ? ' ' + kind : '');
@@ -555,11 +646,11 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
       $('batTxt').textContent = 'Pin ' + y.bat + '%' + (y.chg ? ' ⚡ ' + (y.vin / 10).toFixed(1) + 'V' : '');
       chip('cWifi', y.wifi === 2 ? 'g' : (y.wifi === 1 ? 'y' : 'r'), y.wifi === 2 ? 'WiFi: đã nối' : (y.wifi === 1 ? 'WiFi: đang nối' : 'WiFi: mất'), 'wifiTxt');
       chip('cNet', y.net ? 'g' : '', y.net ? 'Có internet' : 'Chưa có internet', 'netTxt');
-      chip('cNode', y.node ? 'g' : 'y', y.node ? 'ESP phụ: đã nối' : 'ESP phụ: chưa nối', 'nodeTxt');
+      chip('cNode', y.node ? 'g' : 'y', y.node ? 'Node 1: đã nối' : 'Node 1: chưa nối', 'nodeTxt');
       chip('cHw', y.led === 2 ? 'g' : (y.led === 1 ? 'y' : 'r'), y.led === 2 ? 'Phần cứng: đang chạy' : (y.led === 1 ? 'Phần cứng: bình thường' : 'Phần cứng: có lỗi'), 'hwTxt');
     } else {
       $('batIc').className = 'bat'; $('batFill').style.width = '0'; $('batTxt').textContent = 'Pin --%';
-      chip('cWifi', '', 'WiFi', 'wifiTxt'); chip('cNet', '', 'Internet', 'netTxt'); chip('cNode', '', 'ESP phụ', 'nodeTxt'); chip('cHw', '', 'Phần cứng', 'hwTxt');
+      chip('cWifi', '', 'WiFi', 'wifiTxt'); chip('cNet', '', 'Internet', 'netTxt'); chip('cNode', '', 'Node 1', 'nodeTxt'); chip('cHw', '', 'Phần cứng', 'hwTxt');
     }
   }
 
@@ -765,6 +856,7 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
     connected = true;
     setConn('ok', 'Đã kết nối: ' + (tr.name || 'ESP32'));
     try { onEsp(await tr.read(ESP)); } catch (e) {}
+    try { await tr.notify(MOD2, onMod2); try { onMod2(await tr.read(MOD2)); } catch (e) {} } catch (e) { /* hub chưa có Module 2 (firmware < v23.9) */ }
     for (const u of INFO) {                                       // thông tin màn chính: hub cũ không có thì bỏ qua
       try {
         await tr.notify(u, onInfo);
@@ -787,7 +879,7 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
   }
   function onLost() {
     const was = connected;
-    connected = false; got = false; linked = false; codes = null; home.t = home.m = home.y = null; home.loc1 = home.loc2 = '';
+    connected = false; got = false; linked = false; m2got = false; m2linked = false; codes = null; home.t = home.m = home.y = null; home.loc1 = home.loc2 = '';
     if (connecting) return;                                       // đang thử nối: kết quả do connect() xử lý
     setConn('', 'Mất kết nối');
     if (was && !userOff) say(NATIVE ? 'Mất kết nối, đang thử nối lại...' : 'Mất kết nối Bluetooth. Bấm "Kết nối" để thử lại.', 0);
