@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1020">
-<meta name="ui-version" content="18">
+<meta name="ui-version" content="19">
 <title>Trung tâm điều khiển thông minh</title>
 <style>
   :root {
@@ -13,7 +13,7 @@
     --on: #3ddc84; --off: #6b7699; --warn: #ffb020; --err: #ff5d5d; --blue: #4aa8ff;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; background: var(--bg); color: var(--text);
+  html, body { overflow-x: hidden; max-width: 100%; margin: 0; background: var(--bg); color: var(--text);
     font: 16px/1.4 sans-serif; font-style: normal; -webkit-text-size-adjust: 100%; }   /* sans-serif = phông mặc định của điện thoại */
   button, input, select, textarea { font-family: inherit; font-style: normal; }
   main { max-width: 520px; margin: 0 auto; padding: 16px; padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
@@ -45,11 +45,11 @@
   .link.wait { border-color: var(--warn); }
   .link .cnt { margin-left: auto; font-weight: 800; }
 
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .card { text-align: left; padding: 12px; border-radius: 14px; background: var(--card);
-    border: 1.5px solid var(--line); display: flex; flex-direction: column; gap: 4px; min-height: 84px; cursor: pointer; user-select: none; }
-  .card .top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
-  .card .name { font-size: 13px; color: var(--muted); font-weight: 600; letter-spacing: .3px;
+    border: 1.5px solid var(--line); display: flex; flex-direction: column; gap: 4px; min-height: 84px; cursor: pointer; user-select: none; min-width: 0; overflow: hidden; }
+  .card .top { min-width: 0; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  .card .name { min-width: 0; font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: .3px;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .card .ch { font-size: 11px; color: var(--muted); }
   .card .state { font-size: 20px; font-weight: 800; }
@@ -66,7 +66,7 @@
   .card.auto { border-color: var(--blue); }
   .card.auto .state { color: var(--blue); font-size: 17px; }
   .card.hide { display: none; }
-  .card .ic { font-size: 30px; line-height: 1; margin-bottom: 2px; filter: grayscale(1) opacity(.55); transition: filter .2s; }
+  .card .ic { font-size: 22px; line-height: 1; margin-bottom: 2px; filter: grayscale(1) opacity(.55); transition: filter .2s; }
   .card.on .ic, .card.auto .ic, .card.wait .ic { filter: none; }
   .card.err .ic { filter: hue-rotate(150deg) saturate(2); }
   .card.pump { grid-column: 1 / -1; cursor: default; gap: 10px; }
@@ -388,12 +388,12 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
   });
 
   // ---- ô KẾT NỐI: Node 1 và Module 2 (giống ô KẾT NỐI ESP trên hub) ----
-  const linkTiles = [['esp', 'Node 1 · 11 kênh'], ['mod2', 'Module 2 · 4 rơ le']].map(([tab, name]) => {
+  const linkTiles = [['esp', 'Node 1'], ['mod2', 'Module 2']].map(([tab, name]) => {
     const el = document.createElement('div');
     el.className = 'card off disc';
     el.setAttribute('role', 'button'); el.tabIndex = 0;
-    el.innerHTML = '<div class="ic">🔗</div><div class="top"><span class="name"></span><span class="badge">BLE</span></div><div class="state">—</div><div class="hint">Bấm để mở</div>';
-    el.querySelector('.name').textContent = 'KẾT NỐI · ' + name;
+    el.innerHTML = '<div class="ic">🔗</div><div class="top"><span class="name"></span><span class="badge">BLE</span></div><div class="state">—</div><div class="hint">KẾT NỐI</div>';
+    el.querySelector('.name').textContent = name;
     el.addEventListener('click', () => showTab(tab));
     el.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === el) { e.preventDefault(); el.click(); } });
     hubGrid.appendChild(el);
