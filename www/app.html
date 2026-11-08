@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1020">
-<meta name="ui-version" content="15">
+<meta name="ui-version" content="17">
 <title>Trung tâm điều khiển thông minh</title>
 <style>
   :root {
@@ -236,8 +236,11 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
   </section>
 
   <section class="tabpane" data-tab="dev">
-  <div class="sethead">Thiết bị trên hub</div>
+  <div class="sethead">ĐIỀU KHIỂN THIẾT BỊ</div>
   <div class="grid" id="hubGrid"></div>
+  <div class="actions">
+    <button id="btnResetHub" disabled>RESET lỗi</button>
+  </div>
   </section>
 
   <section class="tabpane" data-tab="esp">
@@ -334,8 +337,8 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
   // Thiết bị của chính hub (Đèn 2 / Quạt / Máy sấy nằm trên kênh R1..R3 của ESP phụ, đã có bên dưới)
   const HUBDEV = [
     { key: 'WIFI', idx: 0, name: 'Trạm phát WiFi', ctl: true, confirmOff: 'Tắt Trạm phát WiFi? Thiết bị đang dùng mạng này sẽ mất kết nối.' },
-    { key: 'L1',   idx: 1, name: 'Đèn 1', ctl: true },
     { key: 'AUTO', idx: 6, name: 'Tự động', ctl: true, confirmOff: 'Tắt chế độ TỰ ĐỘNG? Các thiết bị do TỰ ĐỘNG quản lý sẽ bị tắt.' },
+    { key: 'L1',   idx: 1, name: 'Đèn 1', ctl: true },
     { key: 'BL',   idx: 4, name: 'Đèn nền', ctl: false, hint: 'Tự động theo ánh sáng' },
     { key: 'NET',  idx: 7, name: 'Trực tuyến', ctl: false, hint: 'Hub có internet' },
   ];
@@ -380,6 +383,29 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
     return el;
   });
 
+  // ---- ô KẾT NỐI: Node 1 và Module 2 (giống ô KẾT NỐI ESP trên hub) ----
+  const linkTiles = [['esp', 'Node 1 · 11 kênh'], ['mod2', 'Module 2 · 4 rơ le']].map(([tab, name]) => {
+    const el = document.createElement('div');
+    el.className = 'card off disc';
+    el.setAttribute('role', 'button'); el.tabIndex = 0;
+    el.innerHTML = '<div class="top"><span class="name"></span><span class="badge">BLE</span></div><div class="state">—</div><div class="hint">Bấm để mở</div>';
+    el.querySelector('.name').textContent = 'KẾT NỐI · ' + name;
+    el.addEventListener('click', () => showTab(tab));
+    el.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === el) { e.preventDefault(); el.click(); } });
+    hubGrid.appendChild(el);
+    return el;
+  });
+  function renderLinks() {
+    [[linkTiles[0], got, linked], [linkTiles[1], m2got, m2linked]].forEach(([el, g, l]) => {
+      let cls = 'wait', st = 'ĐANG TÌM';
+      if (!connected) { cls = 'off disc'; st = 'CHƯA NỐI HUB'; }
+      else if (g && l) { cls = 'on'; st = 'ĐÃ KẾT NỐI'; }
+      else if (!g) { cls = 'wait'; st = 'ĐANG KIỂM TRA'; }
+      el.className = 'card ' + cls;
+      el.querySelector('.state').textContent = st;
+    });
+  }
+
   function renderHub() {
     HUBDEV.forEach((d, k) => {
       const el = hubCards[k], c = codes ? codes[d.idx] : null;
@@ -404,6 +430,8 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
       }
     });
     $('btnReset').disabled = !connected;
+    $('btnResetHub').disabled = !connected;
+    renderLinks();
   }
 
   function hubToggle(d) {
@@ -414,7 +442,9 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
     if (isOn && d.confirmOff && !window.confirm(d.confirmOff)) return;
     send(d.key + '=' + (isOn ? 0 : 1));
   }
-  $('btnReset').addEventListener('click', () => { if (connected && window.confirm('Xóa lỗi các thiết bị đang báo lỗi?')) send('RESET'); });
+  const doReset = () => { if (connected && window.confirm('Xóa lỗi các thiết bị đang báo lỗi?')) send('RESET'); };
+  $('btnReset').addEventListener('click', doReset);
+  $('btnResetHub').addEventListener('click', doReset);
 
   // nút - % + của Đèn 1: bấm hoặc giữ để chỉnh, gộp nhiều lần bấm thành một lệnh
   (() => {
@@ -428,7 +458,7 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
       sendTimer = setTimeout(() => { send('L1P=' + lvl); }, 180);
     };
     const stop = () => { clearTimeout(holdDelay); clearInterval(holdRep); };
-    hubCards[1].querySelectorAll('.step button').forEach((b) => {
+    hubCards[HUBDEV.findIndex((x) => x.key === 'L1')].querySelectorAll('.step button').forEach((b) => {
       const dd = parseInt(b.dataset.d, 10);
       b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); bump(dd); holdDelay = setTimeout(() => { holdRep = setInterval(() => bump(dd), 130); }, 450); });
       ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => b.addEventListener(ev, stop));
@@ -544,6 +574,7 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
     grid2.appendChild(el); cards2.push(el);
   }
   function renderM2() {
+    try { renderLinks(); } catch (e) {}
     let on = 0;
     cards2.forEach((el, i) => {
       const w = bit(m2want, i), h = bit(m2have, i);
