@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1020">
-<meta name="ui-version" content="17">
+<meta name="ui-version" content="18">
 <title>Trung tâm điều khiển thông minh</title>
 <style>
   :root {
@@ -66,6 +66,9 @@
   .card.auto { border-color: var(--blue); }
   .card.auto .state { color: var(--blue); font-size: 17px; }
   .card.hide { display: none; }
+  .card .ic { font-size: 30px; line-height: 1; margin-bottom: 2px; filter: grayscale(1) opacity(.55); transition: filter .2s; }
+  .card.on .ic, .card.auto .ic, .card.wait .ic { filter: none; }
+  .card.err .ic { filter: hue-rotate(150deg) saturate(2); }
   .card.pump { grid-column: 1 / -1; cursor: default; gap: 10px; }
   .pump .probes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .pump .pr { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px;
@@ -366,11 +369,12 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
     if (t && ms) msgTimer = setTimeout(() => { msg.textContent = ''; }, ms);
   }
 
+  const HUBICON = { WIFI: '📶', AUTO: '🔄', L1: '💡', BL: '🌙', NET: '🌐' };
   // ---- thẻ thiết bị trên hub ----
   const hubCards = HUBDEV.map((d) => {
     const el = document.createElement('div');
     el.className = 'card off disc' + (d.ctl ? '' : ' ro');
-    el.innerHTML = '<div class="top"><span class="name"></span><span class="badge"></span></div><div class="state">—</div><div class="hint"></div>' +
+    el.innerHTML = '<div class="ic">' + (HUBICON[d.key] || '') + '</div><div class="top"><span class="name"></span><span class="badge"></span></div><div class="state">—</div><div class="hint"></div>' +
       (d.key === 'L1' ? '<div class="step"><button type="button" data-d="-5" aria-label="Giảm độ sáng">−</button><span class="pct">--</span><button type="button" data-d="5" aria-label="Tăng độ sáng">+</button></div>' : '');
     el.querySelector('.name').textContent = d.name;
     el.querySelector('.hint').textContent = d.hint || '';
@@ -388,7 +392,7 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
     const el = document.createElement('div');
     el.className = 'card off disc';
     el.setAttribute('role', 'button'); el.tabIndex = 0;
-    el.innerHTML = '<div class="top"><span class="name"></span><span class="badge">BLE</span></div><div class="state">—</div><div class="hint">Bấm để mở</div>';
+    el.innerHTML = '<div class="ic">🔗</div><div class="top"><span class="name"></span><span class="badge">BLE</span></div><div class="state">—</div><div class="hint">Bấm để mở</div>';
     el.querySelector('.name').textContent = 'KẾT NỐI · ' + name;
     el.addEventListener('click', () => showTab(tab));
     el.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === el) { e.preventDefault(); el.click(); } });
