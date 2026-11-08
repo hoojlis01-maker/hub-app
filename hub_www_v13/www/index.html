@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1020"><title>Điều khiển hub</title></head>
+<body style="background:#0b1020;color:#8e9ac4;font:16px system-ui;margin:0;padding:24px">
+Đang mở...
+<script>
+// Chọn giao diện: bản tải thêm (nếu mới hơn bản đóng gói trong app và chạy được) hoặc bản gốc app.html.
+(async () => {
+  let bundled = '';
+  try { bundled = await (await fetch('app.html')).text(); } catch (e) {}
+  const ver = (t) => +((/name="ui-version" content="(\d+)"/.exec(t) || [])[1] || 0);
+  let o = '', ov = 0, tries = 0;
+  try { o = localStorage.getItem('ui_html') || ''; ov = +localStorage.getItem('ui_ver') || 0; tries = +localStorage.getItem('ui_tries') || 0; } catch (e) {}
+  if (o && tries >= 2) {                                            // giao diện tải thêm bị lỗi 2 lần liền: bỏ đi
+    try { localStorage.setItem('ui_html', ''); localStorage.setItem('ui_ver', '0'); localStorage.setItem('ui_tries', '0'); } catch (e) {}
+    o = '';
+  }
+  const useO = o && ov > ver(bundled);
+  const html = useO ? o : bundled;
+  if (!html) { location.replace('app.html'); return; }
+  try { if (useO) localStorage.setItem('ui_tries', String(tries + 1)); } catch (e) {}
+  document.open(); document.write(html); document.close();
+})();
+</script></body></html>
