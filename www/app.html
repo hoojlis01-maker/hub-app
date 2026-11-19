@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1020">
-<meta name="ui-version" content="20">
+<meta name="ui-version" content="21">
 <title>Trung tâm điều khiển thông minh</title>
 <style>
   :root {
@@ -226,6 +226,7 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
     <div class="mods">
       <button type="button" class="mod" id="mN1" data-go="esp"><b>NODE 1 · 11 KÊNH</b><div class="mv" id="mN1v">--</div><small id="mN1s">Chưa kết nối</small></button>
       <button type="button" class="mod" id="mN2" data-go="mod2"><b>MODULE 2 · 4 RƠ LE</b><div class="mv" id="mN2v">--</div><small id="mN2s">Chưa kết nối</small></button>
+      <button type="button" class="mod" id="mD" data-go="dir" style="grid-column:1/-1"><b>THIẾT BỊ TRỰC TIẾP · 4 ĐÈN</b><div class="mv" id="mDv">--</div><small id="mDs">Chưa kết nối</small></button>
     </div>
     <div class="chips">
       <div class="chip" id="cBat"><span class="bat" id="batIc"><b id="batFill"></b></span><span id="batTxt">Pin --%</span></div>
@@ -267,6 +268,18 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
     <button id="btnAllOff2" class="danger" disabled>Tắt tất cả Module 2</button>
     <button id="btnEdit2">Đặt tên kênh</button>
   </div>
+  </section>
+
+  <section class="tabpane" data-tab="dir">
+  <div class="sethead">Thiết bị trực tiếp · 4 đèn</div>
+  <div class="link" id="linkD"><i class="dot"></i><span id="linkDText">Chưa kết nối với hub</span><span class="cnt" id="cntD"></span></div>
+  <div class="grid" id="gridD"></div>
+  <div class="actions">
+    <button id="btnAllOffD" class="danger" disabled>Tắt tất cả</button>
+    <button id="btnEditD">Đặt tên</button>
+  </div>
+  <div class="actions"><button id="btnBackD" type="button">← Về Thiết bị</button></div>
+  <p class="foot">Đèn nối thẳng vào bo trung gian xiaozhi, hub điều khiển qua dây nên vẫn dùng được khi mất Internet. Cần hub từ v24.3.</p>
   </section>
 
   <section class="tabpane" data-tab="set">
@@ -318,6 +331,8 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
   const MAXCH = 16;
   const MOD2 = '6e40010c-b5a3-f393-e0a9-e50e24dcca9e';   // trạng thái MODULE 2 (hub v23.9 trở lên): "F" + muốn + thực + nối
   const M2CH = 4;
+  const DIR = '6e40010d-b5a3-f393-e0a9-e50e24dcca9e';   // trạng thái THIẾT BỊ TRỰC TIẾP (hub v24.3 trở lên): "D" + nối(0/1) + thực(1 hex)
+  const DIRCH = 4;
 
   const RESULT = {
     BADPIN: 'Sai mã PIN.',
@@ -345,6 +360,11 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
     { key: 'NET',  idx: 7, name: 'Trực tuyến', ctl: false, hint: 'Hub có internet' },
   ];
   let m2want = 0, m2have = 0, m2linked = false, m2got = false, m2editing = false;
+  let dwant = 0, dhave = 0, dlinked = false, dgot = false, dediting = false, dHold = 0;   // THIẾT BỊ TRỰC TIẾP
+  const RFCH0 = 4, RFN = 4;                // R5..R8 = nút RF 1..4 (chỉ bấm, không có trạng thái)
+  const isRf = (i) => i >= RFCH0 && i < RFCH0 + RFN;
+  const RFFLASH = {};                      // kênh RF -> mốc thời gian hiện "ĐÃ BẤM"
+  let lastKind = '';                       // loại lệnh vừa gửi (rf / dir) để báo lỗi dễ hiểu khi hub cũ
   let queue = Promise.resolve();
   let msgTimer = 0;
   let editing = false;
@@ -356,9 +376,13 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
   };
   let names = {};
   try { names = JSON.parse(store.get('names') || '{}') || {}; } catch (e) { names = {}; }
-  const DEFAULT = { 0: 'Đèn 2', 1: 'Quạt', 2: 'Máy sấy', 3: 'Máy bơm' };   // R1..R3 gắn sẵn thiết bị trên hub
+  const DEFAULT = { 0: 'Đèn phòng khách', 1: 'Quạt', 2: 'Máy sấy', 3: 'Máy bơm', 4: 'Đèn xa phòng khách', 5: 'Đèn xa ngoài sân', 6: 'Đèn cổng', 7: 'Đèn vườn', 8: 'Đèn bếp', 9: 'Đèn cửa', 10: 'Đèn nhà tắm' };   // theo tên trong xiaozhi   // R1..R3 gắn sẵn thiết bị trên hub
   let m2names = {};
   try { m2names = JSON.parse(store.get('m2names') || '{}') || {}; } catch (e) { m2names = {}; }
+  let dnames = {};
+  try { dnames = JSON.parse(store.get('dnames') || '{}') || {}; } catch (e) { dnames = {}; }
+  const DIRDEF = ['Đèn bàn', 'Đèn dự phòng', 'Đèn khẩn cấp', 'Đèn phụ'];
+  const dNameOf = (i) => (dnames[i] && String(dnames[i]).trim()) || DIRDEF[i];
   const m2NameOf = (i) => (m2names[i] && String(m2names[i]).trim()) || ('Kênh ' + (i + 1));
   const nameOf = (i) => (names[i] && String(names[i]).trim()) || DEFAULT[i] || ('R' + (i + 1));
 
@@ -387,7 +411,7 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
   });
 
   // ---- ô KẾT NỐI: Node 1 và Module 2 (giống ô KẾT NỐI ESP trên hub) ----
-  const linkTiles = [['esp', 'Node 1'], ['mod2', 'Module 2']].map(([tab, name]) => {
+  const linkTiles = [['esp', 'Node 1'], ['mod2', 'Module 2'], ['dir', 'Trực tiếp']].map(([tab, name]) => {
     const el = document.createElement('div');
     el.className = 'card off disc';
     el.setAttribute('role', 'button'); el.tabIndex = 0;
@@ -399,7 +423,7 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
     return el;
   });
   function renderLinks() {
-    [[linkTiles[0], got, linked], [linkTiles[1], m2got, m2linked]].forEach(([el, g, l]) => {
+    [[linkTiles[0], got, linked], [linkTiles[1], m2got, m2linked], [linkTiles[2], dgot, dlinked]].forEach(([el, g, l]) => {
       let cls = 'wait', st = 'ĐANG TÌM';
       if (!connected) { cls = 'off disc'; st = 'CHƯA NỐI HUB'; }
       else if (g && l) { cls = 'on'; st = 'ĐÃ KẾT NỐI'; }
@@ -540,6 +564,18 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
       if (i >= n) return;
       const w = bit(want, i), h = bit(have, i);
       if (i === PUMP_CH) { renderPump(el, i, w, h); if (h) on++; return; }
+      if (isRf(i)) {                                                    // nút RF: chỉ bấm, không có trạng thái bật/tắt
+        const flash = (RFFLASH[i] || 0) > Date.now();
+        let rc = 'off', rs = 'BẤM';
+        if (!connected || !linked) { rc = 'disc'; rs = '---'; }
+        else if (flash) { rc = 'wait'; rs = 'ĐÃ BẤM'; }
+        el.className = 'card ' + rc + (editing ? ' edit' : '');
+        el.querySelector('.name').textContent = nameOf(i);
+        el.querySelector('.ch').textContent = 'RF' + (i - RFCH0 + 1);
+        el.querySelector('.state').textContent = rs;
+        el.setAttribute('aria-disabled', String(rc === 'disc'));
+        return;
+      }
       let cls = 'off', state = 'TẮT';
       if (!connected || !linked) { cls = 'disc'; state = '---'; }
       else if (w !== h) { cls = 'wait'; state = '...'; }
@@ -554,14 +590,16 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
     lk.className = 'link' + (!connected ? '' : (linked ? ' ok' : ' wait'));
     $('linkText').textContent = !connected ? 'Chưa kết nối với hub'
       : (!got ? 'Đang đọc trạng thái...' : (linked ? 'Hub đã nối Node 1 (GPIO-NODE1)' : 'Hub đang tìm Node 1...'));
-    $('cnt').textContent = connected && got && linked ? on + '/' + n + ' BẬT' : '';
+    const nTotal = Math.max(0, n - (n > RFCH0 ? Math.min(RFN, n - RFCH0) : 0));        // không tính 4 nút RF
+    $('cnt').textContent = connected && got && linked ? on + '/' + nTotal + ' BẬT' : '';
     $('btnAllOff').disabled = !(connected && got && linked);
     { const ok1 = connected && got && linked; $('mN1').className = 'mod' + (!connected || !got ? '' : (ok1 ? ' g' : ' y'));
-      $('mN1v').textContent = ok1 ? on + '/' + n + ' BẬT' : '--';
+      $('mN1v').textContent = ok1 ? on + '/' + nTotal + ' BẬT' : '--';
       $('mN1s').textContent = !connected ? 'Chưa kết nối hub' : (!got ? 'Đang đọc...' : (ok1 ? 'Đã nối GPIO-NODE1' : 'Đang tìm Node 1...')); }
     $('bdEsp').parentNode.classList.toggle('has', connected && got && !linked);
     renderHome();
     renderM2();
+    renderD();
   }
 
   // ---- MODULE 2 (4 rơ le): bật/tắt từng kênh ----
@@ -638,6 +676,83 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
     say(m2editing ? 'Chạm vào kênh để đặt tên.' : '');
     renderM2();
   });
+
+
+  // ---- THIẾT BỊ TRỰC TIẾP (đèn nối thẳng vào bo trung gian xiaozhi): bật/tắt từng đèn ----
+  const gridD = $('gridD');
+  const cardsD = [];
+  for (let i = 0; i < DIRCH; i++) {
+    const el = document.createElement('div');
+    el.className = 'card disc';
+    el.setAttribute('role', 'button'); el.tabIndex = 0;
+    el.innerHTML = '<div class="top"><span class="name"></span><span class="ch"></span></div><div class="state">—</div>';
+    el.addEventListener('click', () => (dediting ? renameD(i) : toggleD(i)));
+    el.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === el) { e.preventDefault(); el.click(); } });
+    gridD.appendChild(el); cardsD.push(el);
+  }
+  function renderD() {
+    try { renderLinks(); } catch (e) {}
+    const hold = Date.now() < dHold;                       // vừa bấm: giữ "..." tới khi hub xác nhận
+    let on = 0;
+    cardsD.forEach((el, i) => {
+      const w = bit(dwant, i), h = bit(dhave, i);
+      let cls = 'off', state = 'TẮT';
+      if (!connected || !dgot || !dlinked) { cls = 'disc'; state = '---'; }
+      else if (hold && w !== h) { cls = 'wait'; state = '...'; }
+      else if (h) { cls = 'on'; state = 'BẬT'; on++; }
+      el.className = 'card ' + cls + (dediting ? ' edit' : '');
+      el.querySelector('.name').textContent = dNameOf(i);
+      el.querySelector('.ch').textContent = 'Đ' + (i + 1);
+      el.querySelector('.state').textContent = state;
+      el.setAttribute('aria-disabled', String(cls === 'disc'));
+    });
+    const ok = connected && dgot && dlinked, lk = $('linkD');
+    lk.className = 'link' + (!connected ? '' : (ok ? ' ok' : ' wait'));
+    $('linkDText').textContent = !connected ? 'Chưa kết nối với hub'
+      : (!dgot ? 'Hub chưa gửi trạng thái thiết bị trực tiếp (cần hub v24.3 trở lên)' : (dlinked ? 'Hub đã nối bo trung gian' : 'Chưa kết nối với bo điều khiển'));
+    $('cntD').textContent = ok ? on + '/' + DIRCH + ' BẬT' : '';
+    $('btnAllOffD').disabled = !ok;
+    $('mD').className = 'mod' + (!connected || !dgot ? '' : (ok ? ' g' : ' y'));
+    $('mDv').textContent = ok ? on + '/' + DIRCH + ' BẬT' : '--';
+    $('mDs').textContent = !connected ? 'Chưa kết nối hub' : (!dgot ? 'Hub chưa gửi (cần v24.3)' : (ok ? 'Đã nối bo trung gian' : 'Chưa kết nối với bo điều khiển'));
+  }
+  function onDir(text) {
+    const m = /^D([01])([0-9A-Fa-f])/.exec(text);
+    if (!m) return;
+    dlinked = m[1] === '1'; dhave = parseInt(m[2], 16); dgot = true;
+    if (Date.now() >= dHold) dwant = dhave;                 // không chờ lệnh nào: theo trạng thái thực
+    renderD();
+  }
+  function toggleD(i) {
+    if (!connected || !dgot) return;
+    if (!dlinked) { say('Chưa kết nối với bo điều khiển.'); return; }
+    const isOn = bit(dhave, i) === 1;
+    dwant = isOn ? (dhave & ~(1 << i)) : (dhave | (1 << i));
+    dHold = Date.now() + 1500; renderD(); setTimeout(renderD, 1600);
+    lastKind = 'dir'; send('D' + (i + 1) + '=' + (isOn ? 0 : 1));
+  }
+  $('btnAllOffD').addEventListener('click', () => {
+    if (!connected || !dlinked) return;
+    if (!window.confirm('Tắt tất cả thiết bị trực tiếp?')) return;
+    dwant = 0; dHold = Date.now() + 1500; renderD(); setTimeout(renderD, 1600);
+    lastKind = 'dir'; send('DALL=0');
+  });
+  function renameD(i) {
+    const v = window.prompt('Tên cho Đ' + (i + 1) + ' (để trống = tên mặc định)', dnames[i] || '');
+    if (v === null) return;
+    const t = v.trim().slice(0, 20);
+    if (t) dnames[i] = t; else delete dnames[i];
+    store.set('dnames', JSON.stringify(dnames));
+    renderD();
+  }
+  $('btnEditD').addEventListener('click', () => {
+    dediting = !dediting;
+    $('btnEditD').textContent = dediting ? 'Xong' : 'Đặt tên';
+    $('btnEditD').classList.toggle('primary', dediting);
+    say(dediting ? 'Chạm vào đèn để đặt tên.' : '');
+    renderD();
+  });
+  $('btnBackD').addEventListener('click', () => showTab('dev'));
 
   function setConn(kind, text) {
     pill.className = 'pill' + (kind ? ' ' + kind : '');
@@ -749,7 +864,11 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
     if (m[2] && Date.now() >= lvlHold) { const v = parseInt(m[2], 10); if (v >= 5 && v <= 100) lvl = v; }
     render();
     if (m[3]) lastRes = m[3];
-    if (m[3] && m[3] !== 'OK') say(RESULT[m[3]] || ('Lỗi: ' + m[3]));
+    if (m[3] && m[3] !== 'OK') {
+      if (m[3] === 'BADCMD' && lastKind) say('Hub chưa hỗ trợ lệnh này. Cần nạp hub v24.3 trở lên.');
+      else say(RESULT[m[3]] || ('Lỗi: ' + m[3]));
+      lastKind = '';
+    }
   }
 
   // ---- gửi lệnh ----
@@ -771,6 +890,11 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
       else if (!(pump & 4)) send('PUMP=0');
       else if (!(pump & 8)) send('PUMP=1');
       else send('PUMP=A');
+      return;
+    }
+    if (isRf(i)) {                                                // nút RF: bấm 1 lần
+      RFFLASH[i] = Date.now() + 900; render(); setTimeout(render, 950);
+      lastKind = 'rf'; send('RF' + (i - RFCH0 + 1));
       return;
     }
     const isOn = bit(want, i) === 1;
@@ -911,6 +1035,7 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
     setConn('ok', 'Đã kết nối: ' + (tr.name || 'ESP32'));
     try { onEsp(await tr.read(ESP)); } catch (e) {}
     try { await tr.notify(MOD2, onMod2); try { onMod2(await tr.read(MOD2)); } catch (e) {} } catch (e) { /* hub chưa có Module 2 (firmware < v23.9) */ }
+    try { await tr.notify(DIR, onDir); try { onDir(await tr.read(DIR)); } catch (e) {} } catch (e) { /* hub chưa có thiết bị trực tiếp (firmware < v24.3) */ }
     for (const u of INFO) {                                       // thông tin màn chính: hub cũ không có thì bỏ qua
       try {
         await tr.notify(u, onInfo);
@@ -933,7 +1058,7 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
   }
   function onLost() {
     const was = connected;
-    connected = false; got = false; linked = false; m2got = false; m2linked = false; codes = null; home.t = home.m = home.y = null; home.loc1 = home.loc2 = '';
+    connected = false; got = false; linked = false; m2got = false; m2linked = false; dgot = false; dlinked = false; codes = null; home.t = home.m = home.y = null; home.loc1 = home.loc2 = '';
     if (connecting) return;                                       // đang thử nối: kết quả do connect() xử lý
     setConn('', 'Mất kết nối');
     if (was && !userOff) say(NATIVE ? 'Mất kết nối, đang thử nối lại...' : 'Mất kết nối Bluetooth. Bấm "Kết nối" để thử lại.', 0);
