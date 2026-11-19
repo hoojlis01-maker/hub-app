@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1020">
-<meta name="ui-version" content="21">
+<meta name="ui-version" content="22">
 <title>Trung tâm điều khiển thông minh</title>
 <style>
   :root {
@@ -356,7 +356,6 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
   const HUBDEV = [
     { key: 'WIFI', idx: 0, name: 'Trạm phát WiFi', ctl: true, confirmOff: 'Tắt Trạm phát WiFi? Thiết bị đang dùng mạng này sẽ mất kết nối.' },
     { key: 'AUTO', idx: 6, name: 'Tự động', ctl: true, confirmOff: 'Tắt chế độ TỰ ĐỘNG? Các thiết bị do TỰ ĐỘNG quản lý sẽ bị tắt.' },
-    { key: 'L1',   idx: 1, name: 'Đèn 1', ctl: true },
     { key: 'NET',  idx: 7, name: 'Trực tuyến', ctl: false, hint: 'Hub có internet' },
   ];
   let m2want = 0, m2have = 0, m2linked = false, m2got = false, m2editing = false;
@@ -485,7 +484,8 @@ window.addEventListener('unhandledrejection', function (e) { window.__dbg('LOI h
       sendTimer = setTimeout(() => { send('L1P=' + lvl); }, 180);
     };
     const stop = () => { clearTimeout(holdDelay); clearInterval(holdRep); };
-    hubCards[HUBDEV.findIndex((x) => x.key === 'L1')].querySelectorAll('.step button').forEach((b) => {
+    const iL1 = HUBDEV.findIndex((x) => x.key === 'L1');            // Đèn 1 (PWM) đã bỏ trên hub từ v23.20: không còn thẻ này
+    if (iL1 >= 0) hubCards[iL1].querySelectorAll('.step button').forEach((b) => {
       const dd = parseInt(b.dataset.d, 10);
       b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); bump(dd); holdDelay = setTimeout(() => { holdRep = setInterval(() => bump(dd), 130); }, 450); });
       ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => b.addEventListener(ev, stop));
